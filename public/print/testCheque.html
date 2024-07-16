@@ -1,0 +1,342 @@
+<html><head>
+  <title></title>
+	<style>
+		@media print {
+			@page {
+				margin: 0
+			}
+			
+			.page-breaker {
+				page-break-after: always;
+				overflow: hidden !important;
+			}
+		}
+		
+		body {
+			margin: 0;
+			font-family: Arial, Helvetica, sans-serif;
+		}
+
+		.main {
+			font-size: 12px;
+		}
+
+		.w58mm {
+			width: 195px;
+		}
+
+		.w80mm {
+			width: 272px;
+		}
+
+		dl,h1,h2,h3,h4,h5,h6,ol,p,pre,
+		ul {
+			margin: 0
+		}
+
+		table {
+			font-size: 10px
+		}
+
+		th {
+			font-weight: 400
+		}
+
+		td {
+			vertical-align: top
+		}
+
+		.overflow-hidden {
+			overflow: hidden;
+		}
+
+		.logoText {
+			font-size: 30px;
+			font-weight: 600
+		}
+
+		.text-break-spaces {
+			white-space: break-spaces
+		}
+
+		.text-center {
+			text-align: center
+		}
+
+		.text-uppercase {
+			text-transform: uppercase
+		}
+
+		.d-flex {
+			display: flex
+		}
+
+		.flex-column {
+			flex-direction: column
+		}
+
+		.text-center {
+			text-align: center
+		}
+
+		.text-end {
+			text-align: right
+		}
+
+		.text-start {
+			text-align: left
+		}
+
+		.justify-content-between {
+			justify-content: space-between
+		}
+
+		.justify-content-center {
+			justify-content: center
+		}
+
+		.justify-content-end {
+			justify-content: flex-end
+		}
+
+		.vertical-center {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+		}
+
+		.w-100 {
+			width: 100%
+		}
+
+		.del {
+			text-decoration: line-through
+		}
+
+		.text-nowrap {
+			white-space: nowrap
+		}
+
+		/* ISLOM STYLE */
+		.relative {
+			position: relative
+		}
+		
+		.absolute {
+			position: absolute
+		}
+
+		.h55 {
+			height: 55px;
+		}
+
+		.fz4 {
+			font-size: .25rem
+		}
+
+		.fz8 {
+			font-size: .5rem
+		}
+
+		.fz6 {
+			font-size: .375rem
+		}
+
+		.fz10 {
+			font-size: .625rem
+		}
+
+		.fz12 {
+			font-size: .75rem
+		}
+
+		.fz14 {
+			font-size: .875rem
+		}
+
+		.fz18 {
+			font-size: 1.125rem
+		}
+
+		.fz20 {
+			font-size: 1.25rem
+		}
+
+		.fz22 {
+			font-size: 1.375rem
+		}
+
+		.fz24 {
+			font-size: 1.5rem
+		}
+
+		.fz26 {
+			font-size: 1.625rem
+		}
+
+		.fz30 {
+			font-size: 1.875rem
+		}
+
+		.price_tag_body_60x30 {
+			position: relative;
+			width: 227px;
+			height: 110px;
+			overflow: hidden;
+		}
+
+		.price_tag_body_40x30 {
+			position: relative;
+			width: 152px;
+			height: 110px;
+			overflow: hidden;
+		}
+
+		.price_tag_body_30x20 {
+			position: relative;
+			width: 140px;
+			height: 90px;
+			overflow: hidden;
+		}
+
+		.price-border {
+			border-bottom: 1px solid #000
+		}
+
+		.price {
+			margin-bottom: -9px
+		}
+
+		.fw-700 {
+			font-weight: 700
+		}
+
+		.product_name {
+			height: 28px;
+			position: relative;
+			display: flex;
+			justify-content: center
+		}
+
+		.posName {
+			left: 0
+		}
+
+		.mx-2 {
+			margin-left: .5rem;
+			margin-right: .5rem
+		}
+
+		.me-1 {
+			margin-right: .25rem
+		}
+
+		.me-2 {
+			margin-right: .5rem
+		}
+
+		.me-3 {
+			margin-right: 1rem
+		}
+
+		.mt-1 {
+			margin-top: .25rem
+		}
+
+		.mt-2 {
+			margin-top: .5rem
+		}
+
+		.mt-3 {
+			margin-top: 1rem
+		}
+
+		.mb-1 {
+			margin-bottom: .25rem
+		}
+
+		.mb-2 {
+			margin-bottom: .5rem
+		}
+
+		.mb-3 {
+			margin-bottom: 1rem
+		}
+
+		.mb-4 {
+			margin-bottom: 1.5rem
+		}
+
+		.mb-5 {
+			margin-bottom: 3rem
+		}
+
+		.vertical-rl {
+			writing-mode: vertical-rl;
+			transform: rotate(180deg)
+		}
+
+		.h-100 {
+			height: 100%
+		}
+
+		.price_tag_img img {
+			position: absolute;
+			left: 20px;
+			top: 45px;
+			cursor: pointer
+		}
+
+		.price_tag_img input[type=file] {
+			cursor: pointer;
+			width: 60px;
+			height: 60px;
+			position: absolute;
+			left: 20px;
+			top: 45px;
+			opacity: 0
+		}
+
+		.price_tag_discount {
+			position: absolute;
+			left: 5px;
+			top: 55px;
+			text-decoration: line-through;
+		}
+
+		.product_name_20x30 {
+			text-align: center;
+			margin-bottom: -2px
+		}
+
+		.date {
+			position: absolute;
+			bottom: 0;
+			right: 5px;
+		}
+
+		.date-top-right {
+			position: absolute;
+			top: 0;
+			right: 5px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="preview"><div class="main d-none w80mm"><div class="d-flex justify-content-center w-100 mt-3 mb-2"><div class="d-flex flex-column w-100"><div class="d-flex justify-content-center mb-2"><div class="d-flex"><img src="C:/Users/User/AppData/Roaming/idokon_cashbox/image765498.png" width="50" height="50" alt="logo" class="me-2"><span class="logoText">idokon</span></div></div><h6 class="text-center fw-700 mb-2">newkassa</h6><h6 class="text-center fw-600 mb-2">Телефон:998188010</h6><h6 class="text-center fw-500 mb-2">Адресс:tashkent</h6></div></div><div class="cheque-block-1"><div class="d-flex justify-content-between"><p>Кассир</p><p>UMM 123</p></div><div class="d-flex justify-content-between"><p>№ чека</p><p>346306</p></div><div class="d-flex justify-content-between"><p>Дата</p><p>04.08.2021 11:09:11</p></div></div><div class="overflow-hidden">****************************************************************************************************</div><div class="cheque-block-2"><table class="custom-cheque-table w-100 fz12"><thead><tr><th class="text-start w-50">№ Товар</th><th class="text-start">Количество</th><th class="text-end">Цена</th></tr></thead><tbody><tr><td class="d-flex text-break-spaces"><span>1 шакар</span></td><td class="text-start align-top"><span class="text-nowrap">1<span>X 8 000.00</span></span></td><td class="text-end align-top">8 000.00</td></tr><tr><td class="d-flex text-break-spaces"><span>2 Nestle 1927 Çikolata Ekstra Sütlü 65гр</span></td><td class="text-start align-top"><span class="text-nowrap">1<span>X 2 500.00</span></span></td><td class="text-end align-top">2 500.00</td></tr><tr><td class="d-flex text-break-spaces"><span>3 Kakao detskiy nesquik 250gr</span></td><td class="text-start align-top"><span class="text-nowrap">1<span>X 5 200.00</span></span></td><td class="text-end align-top">5 200.00</td></tr><tr><td colspan="3"><div class="text-end">в т.ч без НДС</div></td></tr></tbody></table></div><div class="overflow-hidden">****************************************************************************************************</div><div class="cheque-block-3 mb-2"><div class="d-flex justify-content-between"><p>Сумма продажи</p><p>15 700.00</p></div><div class="d-flex justify-content-between"><p>Скидка</p><p>0.00</p></div><div class="d-flex justify-content-between"><p class="fw-600 fz20">К оплате</p><p class="fw-600 fz20">15 700.00</p></div><div class="d-flex justify-content-between"><p>Оплачено</p><p>15 700.00</p></div><div class="d-flex justify-content-between"><p>НДС 15%</p><p>0.00</p></div><div class="d-flex justify-content-between"><p>Наличные</p><p>15 700.00</p></div><div class="d-flex justify-content-between"><p>Сдача</p><p>0.00</p></div><div class="d-flex justify-content-between"><p class="fw-600">Сумма долга</p>0</div><div class="d-flex justify-content-between"><p class="fw-600">Должник</p></div></div><div class="d-flex justify-content-center"><svg width="156px" height="50px" x="0px" y="0px" viewBox="0 0 156 50" xmlns="http://www.w3.org/2000/svg" version="1.1" style="transform: translate(0,0)"><rect x="0" y="0" width="156" height="50" style="fill:transparent;"></rect><g transform="translate(10, 10)" style="fill:#000000;"><rect x="0" y="0" width="4" height="30"></rect><rect x="6" y="0" width="2" height="30"></rect><rect x="12" y="0" width="6" height="30"></rect><rect x="22" y="0" width="2" height="30"></rect><rect x="30" y="0" width="2" height="30"></rect><rect x="34" y="0" width="4" height="30"></rect><rect x="44" y="0" width="2" height="30"></rect><rect x="48" y="0" width="2" height="30"></rect><rect x="54" y="0" width="4" height="30"></rect><rect x="66" y="0" width="2" height="30"></rect><rect x="72" y="0" width="4" height="30"></rect><rect x="80" y="0" width="2" height="30"></rect><rect x="88" y="0" width="8" height="30"></rect><rect x="98" y="0" width="6" height="30"></rect><rect x="106" y="0" width="2" height="30"></rect><rect x="110" y="0" width="4" height="30"></rect><rect x="120" y="0" width="6" height="30"></rect><rect x="128" y="0" width="2" height="30"></rect><rect x="132" y="0" width="4" height="30"></rect></g></svg></div><div class="overflow-hidden">****************************************************************************************************</div><div class="d-flex justify-content-center mb-2"><p>Спасибо за покупку!</p></div></div></div>
+	<script>
+		const { ipcRenderer } = require('electron');
+
+		function addHtml(html) {
+			var container = document.getElementById('preview');
+			container.innerHTML = html;
+		}
+
+		ipcRenderer.on('on-print', (event, arg, receiptPrinter) => {
+			addHtml(arg);
+			ipcRenderer.send('open-print', receiptPrinter)
+		})
+	</script>
+
+</body></html>

@@ -1,0 +1,1 @@
+ALTER TABLE products ADD packageName VARCHAR(100)

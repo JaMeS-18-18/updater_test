@@ -1,0 +1,261 @@
+.dark-theme {
+	color: #fff !important;
+	background-color: #262D44 !important;
+}
+
+.dark-theme .theme-text-color {
+	color: #fff;
+}
+
+.dark-theme .titlebar {
+	background-color: #141927;
+}
+
+.dark-theme .titlebar ul li {
+	color: #fff;
+}
+
+.dark-theme .titlebar ul li:hover {
+	background-color: #262D44;
+}
+
+.dark-theme .titlebar ul .last-child:hover {
+	background: #d41313 !important
+}
+
+.dark-theme .titlebar-icon svg {
+	color: #fff;
+}
+
+.dark-theme .titlebar-icon svg:hover {
+	color: #4870FF;
+}
+
+.dark-theme .titlebar-icon {
+	color: #4870FF;
+}
+
+.dark-theme .titlebar-left-color {
+	color: #fff;
+}
+
+.dark-theme .nav-sidebar {
+	background-color: #141927;
+}
+
+.dark-theme .nav-sidebar .contact-center {
+	color: #fff;
+}
+
+.dark-theme .nav-sidebar .cashbox-version p {
+	color: #fff;
+}
+
+.dark-theme .nav-sidebar .sidebar-icon {
+	color: #4870FF;
+}
+
+.dark-theme .router-link-active {
+	background: #262D44;
+	border-left: 2px solid #4870FF;
+}
+
+.dark-theme .router-link:hover {
+	background: #262D44;
+}
+
+.dark-theme .not-synchronized {
+	color: #fff;
+}
+
+.dark-theme .card-background {
+	background-color: #21283F;
+}
+
+.dark-theme .cashbox-tabs .tab-block {
+	background-color: #21283F;
+	color: #fff;
+}
+
+.dark-theme .tab-time {
+	color: #fff;
+}
+
+.dark-theme .custom-input {
+	background-color: #262D44;
+	border-color: #4870FF;
+	color: #fff;
+}
+
+.dark-theme .custom-input::placeholder {
+	color: #fff;
+}
+
+.dark-theme .table {
+	color: #CECECE;
+	border-color: #57585D;
+}
+
+.dark-theme .product-search-table th {
+	color: #fff;
+	border-bottom: 1px solid #fff;
+}
+
+.dark-theme .product-search-table-input {
+	background: transparent;
+	border-bottom: none;
+	color: #fff;
+}
+
+.dark-theme .product-search-table-input::placeholder {
+	color: #fff;
+}
+
+.dark-theme input {
+	caret-color: #fff;
+}
+
+.dark-theme .light:checked {
+	background: #4870FF;
+}
+
+.dark-theme .bg-f8 {
+	background: #262D44;
+}
+
+.dark-theme .card {
+	background-color: #141927;
+}
+
+.dark-theme hr {
+	background-color: #fff;
+}
+
+.dark-theme .settings-title {
+	color: #fff;
+}
+
+.dark-theme .form-control {
+	color: #fff;
+	background-color: #262D44;
+	border: 1px solid #262D44;
+}
+
+.dark-theme .form-control:focus {
+	color: #fff;
+	background-color: #262D44;
+	border-color: #4870FF;
+}
+
+.dark-theme .form-control::placeholder {
+	color: #fff;
+}
+
+.dark-theme .setting-block:hover {
+	background-color: #373e56;
+}
+
+.dark-theme .caret-left-icon {
+	background-color: #A2A2A2;
+}
+
+.dark-theme .modal-content {
+	background-color: #21283F;
+	border: 1px solid #141927;
+}
+
+.dark-theme .form-select {
+	color: #fff;
+	background-color: #262D44;
+	border: 1px solid #262D44;
+}
+
+.dark-theme .cashbox-table-active {
+	background-color: #57585D !important;
+	color: #ffffff;
+}
+
+.dark-theme .cashbox-table-bg-on-hover:hover {
+	background-color: #57585D !important;
+	color: #ffffff;
+}
+
+.dark-theme .tab-rightbar {
+	background-color: #28304D;
+}
+
+.dark-theme .color-62 {
+	color: #fff;
+}
+
+.dark-theme .tabs span {
+	color: #fff;
+}
+
+.dark-theme .return-all-button {
+	background-color: #303547;
+}
+
+.dark-theme .return-all-button:hover {
+	background-color: #141927;
+}
+
+.dark-theme .return-all-footer {
+	background-color: #141927;
+}
+
+.table> :not(:first-child) {
+	border-top: none;
+}
+
+.dark-theme .selected-products-table th {
+	background-color: transparent;
+	color: #fff;
+	border-bottom: 1px solid #fff;
+}
+
+.dark-theme .dropdown-menu-list {
+	background-color: #21283F;
+	border: 2px solid rgba(228, 228, 228, 1);
+	box-shadow: 4px 4px 0 rgba(241, 241, 241, 0.35);
+}
+
+.dark-theme .righbar-closed-icon:hover {
+	background-color: #141927;
+}
+
+.dark-theme .product-search-table th {
+	background-color: #262D44;
+}
+
+.dark-theme tr:focus {
+	background-color: #141927;
+}
+
+.dark-theme .payment-tab-icon-wrapper {
+	color: #ffffff;
+	border: 1px solid #ffffff;
+}
+
+.dark-theme .payment-tab-icon-wrapper.active {
+	border: 1px solid var(--primary);
+	color: var(--primary);
+}
+
+.dark-theme .color-a2 {
+	color: #ffffff;
+}
+
+.dark-theme .apexcharts-tooltip span {
+	color: #222222;
+}
+
+.dark-theme .thead-sticky {
+	background-color: #21283F !important;
+}
+
+/* 
+#141927
+#262D44
+#4870FF
+*/

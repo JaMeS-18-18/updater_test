@@ -1,0 +1,60 @@
+#drag-region {
+	z-index: 2000;
+	width: 100%;
+	-webkit-app-region: drag;
+}
+
+#no-drag-region {
+	-webkit-app-region: no-drag;
+}
+
+.titlebar-left {
+	font-size: 13px;
+	letter-spacing: 1px;
+	line-height: 12px;
+}
+
+.titlebar {
+	position: fixed;
+	height: 32px;
+	font-size: 12px;
+}
+
+.titlebar ul li {
+	width: 56px;
+	height: 32px;
+	cursor: pointer;
+}
+
+.titlebar ul {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	height: 100%;
+}
+
+.titlebar-icon-wifi {
+	color: var(--primary);
+	cursor: pointer;
+}
+
+.titlebar-icon-wifi svg {
+	font-size: 1.2rem;
+}
+
+.titlebar-icon-danger {
+	color: #d41313;
+	cursor: pointer;
+}
+
+.titlebar-icon-danger svg {
+	font-size: 1.2rem;
+}
+
+.titlebar-icon {
+	cursor: pointer;
+}
+
+.titlebar-icon svg {
+	font-size: 1.2rem;
+}

@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS clients (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	clientId INTEGER,
+	name VARCHAR (50),
+	phone1 VARCHAR (50),
+	phone2 VARCHAR (50),
+	comment TEXT
+)

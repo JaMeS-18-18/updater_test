@@ -1,0 +1,2 @@
+ALTER TABLE products ADD uomName VARCHAR(255);
+ALTER TABLE cheques ADD agentId VARCHAR(255)

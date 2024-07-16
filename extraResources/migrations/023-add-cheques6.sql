@@ -1,0 +1,1 @@
+ALTER TABLE cheques RENAME COLUMN discount TO discountAmount

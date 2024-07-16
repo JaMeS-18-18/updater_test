@@ -1,0 +1,1 @@
+ALTER TABLE products ADD packageCode VARCHAR(100)

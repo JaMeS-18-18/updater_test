@@ -1,0 +1,232 @@
+.theme-controller {
+	color: #7b8190;
+	background-color: #f5f6f8;
+}
+
+.theme-text-color {
+	color: #7b8190;
+}
+
+.titlebar {
+	background-color: #ffffff;
+}
+
+.titlebar ul li {
+	color: #8a909c;
+}
+
+.titlebar ul li:hover {
+	background-color: #f5f6f8;
+}
+
+.titlebar ul .last-child:hover {
+	background: #d41313 !important;
+	color: #fff !important
+}
+
+.titlebar-icon svg {
+	color: #7b8190;
+}
+
+.titlebar-icon svg:hover {
+	color: var(--primary);
+}
+
+.titlebar-icon {
+	color: var(--primary);
+}
+
+.titlebar-left-color {
+	color: #7b8190;
+}
+
+.nav-sidebar {
+	background-color: #ffffff;
+}
+
+.nav-sidebar .contact-center {
+	color: #7b8190;
+}
+
+.nav-sidebar .cashbox-version p {
+	color: #7b8190;
+}
+
+.nav-sidebar .sidebar-icon {
+	color: #7b8190;
+}
+
+.router-link-active {
+	background: #f5f6f8;
+	border-left: 2px solid #7b8190;
+}
+
+.router-link:hover {
+	background: #f5f6f8;
+}
+
+.not-synchronized {
+	color: #7b8190;
+}
+
+.card-background {
+	background-color: #ffffff
+}
+
+.cashbox-tabs .tab-block {
+	background-color: #fff;
+	color: #000;
+}
+
+.tab-time {
+	color: #626262;
+}
+
+.custom-input {
+	background-color: #F8F8F8;
+	border-color: var(--primary);
+}
+
+.table {
+	color: #495057;
+	border-color: #f5f6f8;
+}
+
+.product-search-table-input {
+	background: transparent;
+	border-bottom: 2px solid var(--primary);
+}
+
+.light:checked {
+	background: var(--primary);
+}
+
+.card {
+	background-color: #fff;
+}
+
+hr {
+	color: rgba(0, 0, 0, 0.1);
+	background-color: currentColor;
+}
+
+.settings-title {
+	color: #5d5d5d;
+}
+
+.form-control {
+	color: #495057;
+	background-color: #fff;
+	border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+	color: #495057;
+	background-color: #fff;
+	border-color: var(--primary);
+}
+
+.setting-block:hover {
+	background-color: #eee;
+}
+
+.caret-left-icon {
+	background-color: #A2A2A2;
+}
+
+.modal-content {
+	background-color: #fff;
+	border: 1px solid #f6f6f6;
+}
+
+.form-select {
+	color: #495057;
+	background-color: #fff;
+	border: 1px solid #ced4da;
+}
+
+.cashbox-table-active {
+	background-color: #91a0e7 !important;
+	color: #ffffff;
+}
+
+.cashbox-table-bg-on-hover:hover {
+	background-color: #91a0e7 !important;
+	color: #ffffff;
+}
+
+.tab-rightbar {
+	background-color: #F0F0F0;
+}
+
+.color-62 {
+	color: #626262;
+}
+
+.tabs span {
+	color: #4a4a4a;
+}
+
+.return-all-button {
+	background-color: #e6e6e6;
+}
+
+.return-all-button:hover {
+	background-color: #c9c9c9;
+}
+
+.return-all-footer {
+	background-color: #F0F0F0;
+}
+
+.table> :not(:first-child) {
+	border-top: 2px solid #f5f6f8;
+}
+
+.selected-products-table th {
+	background-color: #fff;
+}
+
+.input-no-border th {
+	background-color: #fff;
+}
+
+.dropdown-menu-list {
+	background-color: #fff;
+	border: 2px solid rgba(228, 228, 228, 1);
+	box-shadow: 4px 4px 0 rgba(241, 241, 241, 0.35);
+}
+
+.righbar-closed-icon:hover {
+	background-color: #e3e3ea;
+}
+
+.product-search-table th {
+	background-color: #fff;
+}
+
+tr:focus {
+	background-color: #d3d3d3;
+}
+
+.payment-tab-icon-wrapper {
+	color: #222222;
+	border: 1px solid #000000;
+}
+
+.payment-tab-icon-wrapper.active {
+	border: 1px solid var(--primary);
+	color: var(--primary);
+}
+
+.color-a2 {
+	color: #A2A2A2;
+}
+
+.apexcharts-tooltip span {
+	color: #222222;
+}
+
+#chartContainer .apexcharts-tooltip {
+  color: #000000;
+}

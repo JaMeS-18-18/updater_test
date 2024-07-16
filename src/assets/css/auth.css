@@ -1,0 +1,123 @@
+.authentication-bg {
+	position: relative;
+	height: 100vh;
+	background: linear-gradient(90deg, var(--primary), var(--primary));
+}
+
+.login-input {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	outline: 0;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	background-color: rgba(255, 255, 255, 0.1);
+	width: 250px;
+	border-radius: 3px;
+	padding: 10px 15px;
+	margin: 0 auto 10px auto;
+	display: block;
+	text-align: center;
+	font-size: 18px;
+	color: #fff;
+	transition-duration: 0.25s;
+	font-weight: 400;
+}
+
+.login-input:hover {
+	background-color: fade(white, 40%);
+}
+
+.login-input::placeholder {
+	color: #fff;
+	opacity: 0.4;
+}
+
+/* .login-input:focus {
+	background-color: white;
+	width: 300px;
+	color: var(--primary);
+} */
+
+.login-button {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	outline: 0;
+	background-color: white;
+	border: 0;
+	padding: 10px 15px;
+	color: var(--primary);
+	border-radius: 3px;
+	width: 250px;
+	cursor: pointer;
+	font-size: 18px;
+	transition-duration: 0.25s;
+	font-weight: 500;
+}
+
+.login-button:hover {
+	background-color: #f5f7f9;
+}
+
+.login-button:disabled,
+.login-button[disabled] {
+	background-color: #fff;
+	color: #f46a6a;
+	cursor: default;
+}
+
+.auth-card {
+	z-index: 1000;
+}
+
+.auth-overlay-wrapper {
+	position: fixed;
+	z-index: 999;
+	width: 100%;
+	height: 100%;
+}
+
+.auth-overlay-wrapper2 {
+	top: 0px;
+	left: 0;
+	background: rgba(0, 0, 0, .7);
+	width: 100%;
+	height: 100vh;
+	position: fixed;
+	-webkit-transition: all .3s ease;
+	transition: all .3s ease;
+}
+
+.auth-overlay-wrapper3 {
+	display: block;
+	max-width: 500px;
+	top: 30%;
+	margin: auto;
+	border-radius: 10px;
+	text-align: center;
+	position: relative;
+}
+
+.about-idokon {
+	color: #fff;
+	bottom: 10px;
+	left: 10px;
+	z-index: 1;
+}
+
+.auth-settings {
+	position: absolute;
+	cursor: pointer;
+	color: #fff;
+}
+
+.right-setting-button {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	border: 1px solid #fff;
+	border-radius: 5px;
+	height: 50px;
+	width: 50px;
+}

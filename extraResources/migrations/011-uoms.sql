@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS uoms (
+	id INTEGER,
+	ofdUomId INTEGER,
+	name VARCHAR (50)
+)
