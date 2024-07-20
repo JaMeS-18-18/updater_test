@@ -41,7 +41,6 @@ function Login() {
 		'incorrectAuthCount': 0,
 		'countDown': 0,
 	})
-	const [version, setVersion] = useState("0")
 	const [countDown, setCountDown] = useState(0);
 	const [showUpdateModal, setShowUpdateModal] = useState(false);
 	const [downloadStarted, setDownloadStarted] = useState(false);
@@ -213,7 +212,6 @@ function Login() {
 
 	function getAppVersion() {
 		dispatch(SET_VERSION(window.electron.ipcRenderer.sendSync('app-version')))
-		setVersion(window.electron.ipcRenderer.sendSync('app-version'))
 	}
 
 	async function getistFiscalDrives() {
@@ -388,12 +386,8 @@ function Login() {
 					</div>
 
 					<div className="about-idokon position-absolute">
-						<span title={version}>{t('version')}: 1</span> <br />
-						{t('serial_number')}: 20220778 <br />
-						{t('contact_center')}: {globalValue('projectPhone')} <br />
-						{t('legal_address')} <br />
-						{t('made_by_as')} <br />
-						{t('made_by_as2')}
+						{/* <span title={version}>{t('version')}: 1</span> <br />
+						{t('made_by_as2')} */}
 					</div>
 				</div>
 

@@ -5,7 +5,6 @@ import { toast } from 'react-toastify';
 const mainUrl = 'https://my.idokon.uz'
 const projectId = 'idokon_cashbox'
 const projectName = 'idokon - POS'
-const projectPhone = '+998 55 500-00-89'
 const projectLogoWidth = '100'
 
 const axiosInstance = axios.create({
@@ -41,9 +40,6 @@ export function globalValue(type = 'url') {
 	}
 	if (type === 'projectName') {
 		return projectName;
-	}
-	if (type === 'projectPhone') {
-		return projectPhone;
 	}
 	if (type === 'projectLogoWidth') {
 		return projectLogoWidth;
@@ -240,6 +236,10 @@ function httpStatusChecker(error) {
 	}
 	if (error.response.status === 401) {
 		toast.error("Ошибка: Неверный логин или пароль")
+		return;
+	}
+	if (error.response.status === 403) {
+		toast.error("Ошибка: Нет доступа")
 		return;
 	}
 	if (error.response.status === 404) {

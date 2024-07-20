@@ -77,10 +77,6 @@ function Sidebar() {
 					<div className="vertical-center me-2">
 						<HeadsetMicOutlined />
 					</div>
-					<div className="d-flex flex-column">
-						<b>{globalValue('projectPhone')}</b>
-						<b>{t('contact_center')}</b>
-					</div>
 				</div>
 				<div className="cashbox-version">
 					<p className="text-center mb-2" title={version}>

@@ -1,9 +1,9 @@
 {
 	"name": "idokon_cashbox",
-	"version": "1.9.8",
+	"version": "1.0.0",
 	"private": true,
-	"author": "AUTOMATION SOURCE",
-	"email": "shurikaxmedov1@gmail.com",
+	"author": "Idokon",
+	"email": "idokon@gmail.com",
 	"description": "idokon - POS",
 	"homepage": "./",
 	"main": "./public/electron.js",
