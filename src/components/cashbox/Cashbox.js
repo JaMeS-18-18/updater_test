@@ -95,10 +95,12 @@ function Cashbox() {
 										{item.time}
 									</strong>
 								</div>
-								<Close
-									style={{ color: 'dc3545', fontSize: '1rem' }}
-									onClick={() => setShowConfirmModalDeleteItem({ 'bool': true, 'index': index })}
-								/>
+								{tabs.length > 1 &&
+									<Close
+										style={{ color: 'dc3545', fontSize: '1rem' }}
+										onClick={() => setShowConfirmModalDeleteItem({ 'bool': true, 'index': index })}
+									/>
+								}
 							</div>
 						</li>
 					))}

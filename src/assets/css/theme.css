@@ -146,12 +146,12 @@ hr {
 }
 
 .cashbox-table-active {
-	background-color: #91a0e7 !important;
+	/* background-color: #91a0e7 !important; */
 	color: #ffffff;
 }
 
 .cashbox-table-bg-on-hover:hover {
-	background-color: #91a0e7 !important;
+	background-color: var(--primary) !important;
 	color: #ffffff;
 }
 

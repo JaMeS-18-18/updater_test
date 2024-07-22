@@ -7,7 +7,6 @@ import {
 	LocalOffer, HeadsetMicOutlined, BarChartOutlined,
 	ArchiveOutlined, KeyboardOutlined, VerifiedUserOutlined
 } from '@material-ui/icons';
-import { globalValue } from 'api/api';
 
 function Sidebar() {
 	const { t } = useTranslation();
