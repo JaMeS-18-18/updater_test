@@ -2915,6 +2915,10 @@ function Tab({ tabId, activeTabId }) {
 		dataCopy['organizationId'] = foundCheque['organizationId']
 		dataCopy['organizationName'] = foundCheque['organizationName']
 		dataCopy['chequeOnlineId'] = foundCheque['id']
+		if (dataCopy['discount'] > 0) {
+			dataCopy['discountAmount'] = Number(dataCopy['totalPriceBeforeDiscount']) - Number(dataCopy['totalPrice'])
+		}
+		console.log(dataCopy);
 
 		setData(dataCopy)
 		setShowAgentChequesModal(false)
@@ -4914,7 +4918,7 @@ function Tab({ tabId, activeTabId }) {
 			{/* PRINT */}
 			<div className={`d-none ${returnPrinterWidth()}`} ref={printChequeRef2}>
 				Do'konni avtomatizatsiya dasturi. <br />
-				IDokon 24/7 bepul maslahat. <br />
+				ID okon 24/7 bepul maslahat. <br />
 				QR kodli chek. <br />
 				Bizning do'konimizdan xarid qiling 1% cashback oling. <br />
 				Xaridingiz uchun raxmat. <br />
