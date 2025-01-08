@@ -986,6 +986,9 @@ function Tab({ tabId, activeTabId }) {
 				(100 + Number(dataCopy.itemsList[i]['vat'])) *
 				Number(dataCopy.itemsList[i]['vat'])
 		}
+
+		dataCopy.totalPrice = Math.floor(dataCopy.totalPrice * 100) / 100
+
 		setData(dataCopy)
 	}
 
@@ -1515,6 +1518,20 @@ function Tab({ tabId, activeTabId }) {
 			toast.error('FactoryID не найден в настройках')
 			return
 		}
+		let invalidProducts = [];
+		if (reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId) {
+			for (let i = 0; i < dataCopy.itemsList.length; i++) {
+				const item = dataCopy.itemsList[i];
+				if (!item['gtin'] || !item['packageCode']) {
+					invalidProducts.push(`Продукт №${i + 1} ${item.name}`);
+				}
+			}
+		}
+		if (invalidProducts.length > 0) {
+			toast.error(`Продукты без ofd:\n${invalidProducts.join(', ')}`);
+			return;
+		}
+
 		//reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId
 		if (reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId) {
 			var printerResponse;
@@ -1976,14 +1993,14 @@ function Tab({ tabId, activeTabId }) {
 
 		if (transactionsListCash.amountIn) {
 			if (Number(transactionsListCash.amountIn) >= Number(dataCopy.totalPrice)) {
-				ofdData.params.Receipt.ReceivedCash = Number(dataCopy.totalPrice) * 100
+				ofdData.params.Receipt.ReceivedCash = parseInt(Number(dataCopy.totalPrice) * 100)
 			} else {
-				ofdData.params.Receipt.ReceivedCash = Number(transactionsListCash.amountIn) * 100
+				ofdData.params.Receipt.ReceivedCash = parseInt(Number(transactionsListCash.amountIn) * 100)
 			}
 		}
 
 		if (transactionsListTerminal.amountIn) {
-			ofdData.params.Receipt.ReceivedCard = Number(transactionsListTerminal.amountIn) * 100
+			ofdData.params.Receipt.ReceivedCard = parseInt(Number(transactionsListTerminal.amountIn) * 100)
 		}
 
 		for (let i = 0; i < dataCopy.itemsList.length; i++) {
@@ -2004,12 +2021,12 @@ function Tab({ tabId, activeTabId }) {
 			ofdData.params.Receipt.Items.push(
 				{
 					"SPIC": dataCopy.itemsList[i]['gtin'], // Уникальный номер в едином каталоге
-					"VATPercent": Number(dataCopy.itemsList[i]['vat']),
-					"VAT": Number(vat.toFixed(0)) * 100,
-					"Discount": Number(dataCopy.itemsList[i]['discountAmount'].toFixed(0)) * 100,
-					"Price": dataCopy.itemsList[i]['quantity'] * Number(dataCopy.itemsList[i]['salePrice']) * 100,
+					"VATPercent": parseInt(Number(dataCopy.itemsList[i]['vat'])),
+					"VAT": parseInt(Number(vat) * 100),
+					"Discount": parseInt(dataCopy.itemsList[i]['discountAmount']) * 100,
+					"Price": parseInt(dataCopy.itemsList[i]['quantity'] * Number(dataCopy.itemsList[i]['salePrice']) * 100),
 					"Barcode": dataCopy.itemsList[i]['barcode'],
-					"Amount": dataCopy.itemsList[i]['quantity'] * 1000,
+					"Amount": parseInt(Number(dataCopy.itemsList[i]['quantity']) * 1000),
 					"Label": dataCopy.itemsList[i]['markingNumber'] ?? "", // маркированные товары сигареты
 					"Units": dataCopy.itemsList[i]['ofdUomId'],
 					"packageCode": dataCopy.itemsList[i]['packageCode'],
