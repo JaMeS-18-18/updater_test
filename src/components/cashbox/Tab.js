@@ -5300,10 +5300,10 @@ function Tab({ tabId, activeTabId }) {
 						</div>
 					} */}
 					<div className="d-flex justify-content-between">
-						<p>Chek raqami</p>
-						<p>{parseInt(localStorage.getItem("check_count")) + 1}</p>
-					</div>
-					<div className="d-flex justify-content-between">
+					<p>Chek raqami</p>
+					<p>{parseInt(localStorage.getItem("check_count")) + 1}</p>
+				</div>
+				<div className="d-flex justify-content-between">
 						<p>{t('card_type')}</p>
 						<p>{account.firstName + " " + account.lastName}</p>
 					</div>
