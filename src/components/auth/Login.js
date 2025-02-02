@@ -24,6 +24,7 @@ import uzCyrl from '../../assets/flags/uz-Cyrl-UZ.png'
 
 import Lottie from 'react-lottie-player'
 import lottieJson from '../settings/loader.json'
+import '@fortawesome/fontawesome-free/css/all.min.css'
 
 function Login() {
 	const { i18n, t } = useTranslation();
@@ -55,6 +56,12 @@ function Login() {
 		version: 0,
 	});
 
+	const [showPassword, setShowPassword] = useState(false);
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
+    };
+
 	function changeLanguage(language = 'uz-Latn-UZ') {
 		i18n.changeLanguage(language);
 
@@ -76,6 +83,85 @@ function Login() {
 		else if (locale === 'uz-Cyrl-UZ') return { flag: uzCyrl, lang: 'uzbek_cyrl' }
 	}
 
+	function getCurrentDateTime() {
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+		const day = String(now.getDate()).padStart(2, '0');
+		const hours = String(now.getHours()).padStart(2, '0');
+		const minutes = String(now.getMinutes()).padStart(2, '0');
+		const seconds = String(now.getSeconds()).padStart(2, '0');
+	
+		return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+	}
+
+	async function startMultikassaSession(cashier = 'test') {
+
+		const url = "http://localhost:8080/api/v1/operations";
+
+		const requestBody = {
+			"module_operation_type": "1",
+			"receipt_gnk_time": getCurrentDateTime(), // Set current time
+			"receipt_cashier_name": cashier
+		};
+
+		try {
+			const response = await fetch(url, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json', // Ensure JSON data format
+				},
+				body: JSON.stringify(requestBody), // Convert JS object to JSON string
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+
+			const result = await response.json(); // Parse response to JSON
+			toast.success(t('success_ofd_start_session'))
+		} catch (error) {
+			toast.error(t('fail_ofd_start_session'))
+		}
+
+	}
+
+
+	async function getCompanyDetails() {
+		const url = "http://localhost:8080/api/v1/contragents";
+	
+		try {
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json', // Ensure JSON data format
+				}
+			});
+	
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+	
+			const result = await response.json(); // Parse response to JSON
+	
+			// Extract coordinates from tradepoint_coordinates
+			const coordinates = result.data.tradepoint_coordinates;
+			if (coordinates) {
+				const [lat, lon] = coordinates
+					.replace(/[()]/g, '') // Remove parentheses
+					.split(','); // Split by comma
+	
+				localStorage.setItem('lat', lat.trim());
+				localStorage.setItem('lon', lon.trim());
+			} else {
+				console.warn("Coordinates not available in the response data.");
+			}
+	
+		} catch (error) {
+
+		}
+	}
+
 	async function signIn(e) {
 		e.preventDefault()
 		GUESS_POST("/auth/login", user, true).then(response => {
@@ -83,8 +169,13 @@ function Login() {
 			localStorage.setItem("username", user.username.toLowerCase());
 			localStorage.setItem("password", user.password);
 			localStorage.setItem("tokenTime", JSON.stringify(new Date().getTime()));
-			GET("/services/uaa/api/account").then(response => {
+			localStorage.setItem('check_count', 0)
+			localStorage.setItem('cashAmount', '')
+			localStorage.removeItem('tabs')
+			localStorage.removeItem('tabCheque')
 
+
+			GET("/services/uaa/api/account").then(response => {
 				var checker = false
 				for (let i = 0; i < response.authorities.length; i++) {
 					if (response.authorities[i] === "ROLE_CASHIER" || response.authorities[i] === "ROLE_AGENT") {
@@ -108,6 +199,15 @@ function Login() {
 							if (parsedSettings && parsedSettings.darkTheme) {
 								document.body.classList.add('dark-theme');
 							}
+						}
+
+						localStorage.setItem('multikassaOfd', parsedSettings?.multikassaOfd)
+
+						if(parsedSettings?.multikassaOfd){
+							localStorage.setItem("cashierName", response.firstName + " " + response.lastName)
+							startMultikassaSession(response.firstName + " " + response.lastName)
+							getCompanyDetails();
+							// toast.info(response.firstName + " " + response.lastName)
 						}
 
 						if (parsedSettings?.ofd) {
@@ -151,7 +251,7 @@ function Login() {
 		if (localUser?.countDown) {
 			userCopy.countDown = localUser?.countDown
 		} else {
-			userCopy.countDown = 180
+			userCopy.countDown = 60
 		}
 		setCountDown(userCopy.countDown);
 		let timerId = setInterval(() => {
@@ -314,12 +414,31 @@ function Login() {
 											placeholder={t('LOGIN')}
 											onChange={(e) => setUser({ ...user, 'username': e.target.value })} />
 
-										<input className="login-input"
-											type="password"
-											name="password"
-											placeholder={t('PASSWORD')}
-											value={user.password}
-											onChange={(e) => setUser({ ...user, 'password': e.target.value })} />
+										<div style={{display: 'flex', width: '250px', margin: '0 auto'}}>
+											<input className="login-input"
+						  
+												name="password"
+												type={showPassword ? 'text' : 'password'}
+												placeholder={t('PASSWORD')}
+												value={user.password}
+												onChange={(e) => setUser({ ...user, 'password': e.target.value })} />
+
+											<button
+													type="button"
+													onClick={togglePasswordVisibility}
+													style={{
+													border: 'none',
+													background: 'none',
+													cursor: 'pointer',
+													margin: '-5px 0 0 -35px',
+													color: 'white',
+													width: '35px',
+													fontSize: '18px'
+												}}
+												aria-label="Toggle password visibility">
+												<i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+											</button>
+										</div>		
 
 										<div className="text-center">
 											<button type="submit" className="login-button" disabled={timer !== null}>

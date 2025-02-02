@@ -58,3 +58,93 @@
 .titlebar-icon svg {
 	font-size: 1.2rem;
 }
+
+/* Umumiy dizayn */
+.accordion-button {
+	background-color: #f0f4f8; /* Sodiq va ochiq rang */
+	border: none;
+	font-size: 16px;
+	font-weight: normal; /* Juda qalin emas */
+	color: #495057; /* Engil qora rang */
+	padding: 15px;
+	text-align: left;
+	transition: background-color 0.3s ease;
+	width: 100%;
+	box-sizing: border-box;
+  }
+  
+  /* Accordionni ochish va yopish holati uchun toggle effekti */
+  .accordion-button.collapsed {
+	background-color: #f0f4f8;
+  }
+  
+  .accordion-button:not(.collapsed) {
+	background-color: #d1e7fd; /* Ochiq ko'k rang */
+	color: #343a40;
+  }
+  
+  /* Hover holati uchun tugma rangini o'zgartirish */
+  .accordion-button:hover {
+	background-color: #e0e7ff; /* Yengil ko'k rangda hover effekti */
+  }
+  
+  /* Accordionning ochilishi va yopilishi */
+  .accordion-collapse {
+	transition: max-height 0.3s ease-out;
+	max-height: 0;
+	overflow: hidden;
+  }
+  
+  /* Accordion ochilganida */
+  .accordion-collapse.show {
+	max-height: 500px; /* Bu o'lchamni moslashtirishingiz mumkin */
+  }
+  
+  /* Accordion tanasi (body) */
+  .accordion-body {
+	font-size: 15px;
+	font-weight: normal;
+	padding: 20px;
+	color: #495057;
+	background-color: #f8f9fa; /* Ochiq rang */
+	line-height: 1.6; /* Yaxshi o'qilishi uchun */
+  }
+  
+  /* Ranglar va chegaralar */
+  .bg-light {
+	background-color: #f8f9fa !important;
+  }
+  
+  .bg-warning {
+	background-color: #ffe5b4 !important; /* Yengil sariq rang */
+  }
+  
+  .bg-danger {
+	background-color: #f8d7da !important; /* Yengil qizil rang */
+  }
+  
+  .text-dark {
+	color: #495057 !important;
+  }
+  
+  .text-white {
+	color: #fff !important;
+  }
+  
+  /* Accordion item uchun animatsiya */
+  .accordion-item {
+	margin-bottom: 15px;
+	transition: transform 0.3s ease-in-out;
+  }
+  
+  /* Responsive dizayn */
+  @media (max-width: 768px) {
+	.accordion-button {
+	  font-size: 14px;
+	  padding: 12px;
+	}
+  
+	.accordion-body {
+	  font-size: 14px;
+	}
+  }

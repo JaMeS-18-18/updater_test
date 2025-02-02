@@ -49,6 +49,88 @@ function Return() {
 		transactionsList: [{ "amountIn": 0, "amountOut": 0, "paymentTypeId": 1, "paymentPurposeId": 3 }]
 	});
 
+	const multikassaOfd = reduxSettings?.multikassaOfd;
+	var formattedMessage = ''
+
+	async function getProductInfoFromMultikassa(searchMxikCode) {
+		const url = `http://localhost:8080/api/v1/products/check?mxikCode=${searchMxikCode}`;
+	
+		try {
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+	
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+	
+			const result = await response.json();
+			
+			// Ensure correct path access with optional chaining
+			return result.data?.data?.[0]?.info || {}; // Return an empty object if not available
+		} catch (error) {
+			console.error('Fetch error:', error);
+			return {};
+		}
+	}
+
+	function mapToMultikassa(input) {
+		const currentDateTime = new Date().toISOString().replace('T', ' ').slice(0, 19); // Format: YYYY-MM-DD HH:MM:SS
+	
+		// Return promises for each item to handle async API calls within a non-async function
+		const itemPromises = input.itemsList.map(item => {
+			return getProductInfoFromMultikassa(item.gtin).then(details => {
+				const packageInfo = details.packageNames?.[0] || {};
+	
+				return {
+					classifier_class_code: item.gtin,
+					product_mark: item.marking == 0,
+					product_name: item.productName,
+					product_barcode: item.barcode,
+					product_barcodes: [
+						{
+							barcode: item.barcode,
+							type: null
+						}
+					],
+					product_price: parseInt(item.salePrice, 10),
+					total_product_price: item.totalPrice,
+					product_without_vat: item.vat === 0,
+					product_discount: item.discountAmount,
+					count: item.quantity,
+					product_vat_percent: item.vat,
+					other: 0,
+					product_package: String(packageInfo.code || "default_code"),
+					product_package_name: packageInfo.nameLat || "default_name"
+
+				};
+			});
+		});
+	
+		return Promise.all(itemPromises).then(items => ({
+			module_operation_type: "4",
+			receipt_sum: input.totalAmount * 100,
+			receipt_cashier_name: localStorage.getItem("cashierName"),
+			receipt_gnk_receivedcash: input.totalAmount * 100,
+			receipt_gnk_receivedcard: 0,
+			receipt_gnk_time: currentDateTime,
+			items: items,
+			RefundInfo: {
+        		TerminalID: input.terminalID,
+				ReceiptSeq: input.receiptSeq,
+				DateTime: input.dateTime,
+				FiscalSign: input.fiscalSign 
+			},													
+			location: {
+				latitude: parseFloat(localStorage.getItem("lat")),
+				longitude: parseFloat(localStorage.getItem("lon")) //"tradepoint_coordinates": "(41.2969055300243,69.25275371796873)",
+			}
+		}));
+	}
+
 	async function returnCheque(e) {
 		if (e) e.preventDefault()
 
@@ -296,21 +378,242 @@ function Return() {
 			setSendData(sendDataCopy)
 		}
 
-		POST("/services/desktop/api/cheque-returned", sendDataCopy).then(() => {
-			if (reduxSettings?.printReturnCheque) {
-				var domInString = printChequeRef.current.outerHTML
-				window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+		mapToMultikassa(sendDataCopy).then(mappedData => {
+            if (multikassaOfd) {
+                sendDataCopy.requestOfd = JSON.stringify(mappedData);
+
+                // Step 2: Send requestOfd to the external API to get responseOfd
+                return POST("http://localhost:8080/api/v1/operations",  sendDataCopy.requestOfd, false, false);
+
+            } else {
+                // Skip if multikassaOfd is false
+                return null;
+            }
+			
+        })
+        .then(responseOfd => {
+            if (multikassaOfd && responseOfd) {
+                sendDataCopy.responseOfd = JSON.stringify(responseOfd);
+				
+				if(responseOfd?.success){
+					sendDataCopy.chequeDate = getUnixTime()
+					sendDataCopy.chequeTimeEnd = getUnixTime()
+					// dataCopy.fiscalResult = responseOfd?.result
+					sendDataCopy.appletVersion = responseOfd?.data?.receipt_gnk_appletversion
+					sendDataCopy.dateTime = responseOfd?.data?.receipt_gnk_datetime
+					sendDataCopy.fiscalSign = responseOfd?.data?.receipt_gnk_fiscalsign
+					sendDataCopy.receiptSeq = responseOfd?.data?.receipt_gnk_receiptseq
+					sendDataCopy.qRCodeURL = responseOfd?.data?.receipt_gnk_qrcodeurl
+					sendDataCopy.terminalID = responseOfd?.data?.module_gnk_id
+				}else{
+					if (responseOfd?.error) {
+						switch (responseOfd?.error?.code) {
+							case 36870:
+								toast.error(`Код ошибки: 36870 Количество чеков равно нулю`)
+								break;
+							case 36871:
+								toast.error(`Код ошибки: 36871 Номер чека не правильный`)
+								break;
+							case 36872:
+								toast.error(`Код ошибки: 36872 Чек не найден`)
+								break;
+							case 36873:
+								toast.error(`Код ошибки: 36873 Размер информации не поддерживается`)
+								break;
+							case 36877:
+								toast.error(`Код ошибки: 36877 Формат чека на правильный`)
+								break;
+							case 36878:
+								toast.error(`Код ошибки: 36878 Общая сумма превышает максимального значение`)
+								break;
+							case 36879:
+								toast.error(`Код ошибки: 36879 Общая сумма превышает стоимость по товарным позициям`)
+								break;
+							case 36886:
+								toast.error(`Код ошибки: 36886 Память чека заполнена`)
+								break;
+							case 36888:
+								toast.error(`Код ошибки: 36888 Время чека старое`)
+								break;
+							case 36889:
+								toast.error(`Код ошибки: 36889 Кол-во дней хранения чеков превышено, следует отправить чеки`)
+								break;
+							case 36890:
+								toast.error(`Код ошибки: 36890 Формат времени последней транзакции ошибочна`)
+								break;
+							case 36891:
+								toast.error(`Код ошибки: 36891 Формат времени чека ошибочная`)
+								break;
+							case 36892:
+								toast.error(`Код ошибки: 36892 Ошибка сервера ОФД по длине строк`)
+								break;
+							case 36893:
+								toast.error(`Код ошибки: 36893 Ошибка сервера ОФД по подписи чека`)
+								break;
+							case 36894:
+								toast.error(`Код ошибки: 36894 Ошибка сервера ОФД по номеру ФМ (все три позиции связаны с несанкционированным доступом к серверу ОФД)`)
+								break;
+							case 36895:
+								toast.error(`Код ошибки: 36895 -`)
+								break;
+							case 36896:
+								toast.error(`Код ошибки: 36896 Ошибка связана с длиной строки Z-report`)
+								break;
+							case 36897:
+								toast.error(`Код ошибки: 36897 Время закрытие чека старое`)
+								break;
+							case 36898:
+								toast.error(`Код ошибки: 36898 Память Z-report заполнена`)
+								break;
+							case 36899:
+								toast.error(`Код ошибки: 36899 Формат текущего времени ошибочна`)
+								break;
+							case 36900:
+								toast.error(`Код ошибки: 36900 Формат времени последнего отправленного чека ошибочна`)
+								break;
+							case 36902:
+								toast.error(`Код ошибки: 36902 Номер Z-report не правильный`)
+								break;
+							case 36903:
+								toast.error(`Код ошибки: 36903 -`)
+								break;
+							case 36904:
+								toast.error(`Код ошибки: 36904 Фискальный модуль заблокирован`)
+								break;
+							case 36905:
+								toast.error(`Код ошибки: 36905 -`)
+								break;
+							case 36906:
+								toast.error(`Код ошибки: 36906 -`)
+								break;
+							case 36907:
+								toast.error(`Код ошибки: 36907 Текущий Z-report пустой`)
+								break;
+							case 36908:
+								toast.error(`Код ошибки: 36908 Общая сумма чека не может быть нулем`)
+								break;
+							case 36909:
+								toast.error(`Код ошибки: 36909 Z-report не открыт`)
+								break;
+							case 36910:
+								toast.error(`Код ошибки: 36910 Формат времени открытия Z-report ошибочна`)
+								break;
+							case 36911:
+								toast.error(`Код ошибки: 36911 Превышено кол-во операций (продажи и возврата) в Z-отчете`)
+								break;
+							case 36912:
+								toast.error(`Код ошибки: 36912 Z-report уже открыт`)
+								break;
+							case 36913:
+								toast.error(`Код ошибки: 36913 Не достаточно средств для возврата (наличка)`)
+								break;
+							case 36914:
+								toast.error(`Код ошибки: 36914 Не достаточно средств для возврата (пластик)`)
+								break;
+							case 36915:
+								toast.error(`Код ошибки: 36915 Не достаточно средств для возврата (НДС)`)
+								break;
+							case 36916:
+								toast.error(`Код ошибки: 36916 Время открытия Z-report старое`)
+								break;
+							case 36917:
+								toast.error(`Код ошибки: 36917 Требуется обслуживание со стороны ОФД`)
+								break;
+							case 65274:
+								toast.error(`Код ошибки: 65274 При регистрации чека возврата и при проверки информации об
+								отозванном чеке (RefundInfo) возникла ошибка подключения к
+								серверу ОФД. Повторите попытку.
+								`)
+								break;
+							case 65275:
+								toast.error(`Код ошибки: 65275 При регистрации чека возврата была передана информация об
+								отозванном чеке (RefundInfo) с недействительным ФП
+								`)
+								break;
+							case 65276:
+								toast.error(`Код ошибки: 65276 При регистрации чека возврата была передана информация об
+								отозванном чеке (RefundInfo) с неправильными значениями`)
+								break;
+							case 65277:
+								toast.error(`Код ошибки: 65277 При регистрации чека возврата не была передана информация
+								об отозванном чеке (RefundInfo)`)
+								break;
+							case 65278:
+								toast.error(`Код ошибки: 65278 Сбой при вызове команды ФМ, повторите попытку.`)
+								break;
+							case 65279:
+								toast.error(`Код ошибки: 65279 Сервер ОФД заблокировал принятия чеков от ФМ, обратитесь
+								в ОФД. После разблокировки ФМ в ОФД, подождите
+								определенное время (10 минут), затем перезапустите сервис
+								FiscalDriveAPI для продолжения работы.`)
+								break;
+							case 65524:
+								toast.error(`Код ошибки: 65524 Не удалось декодировать ответ от ФМ, повторите попытку.
+								Возможно ФМ поврежден.`)
+								break;
+							case 65525:
+								toast.error(`Код ошибки: 65525 Сервис FiscalDriveAPI не поддерживает версию апплета в ФМ,
+								следует подключить новый ФМ с новым апплетом`)
+								break;
+							case 65528:
+								toast.error(`Код ошибки: 65528 Ошибка при сохранении файла чека в БД, возможно файл БД
+								поврежден.`)
+								break;
+							case 65529:
+								toast.error(`Код ошибки: 65529 Не удалось декодировать ответ от ФМ, повторите попытку.
+								Возможно ФМ поврежден.`)
+								break;
+							case 65531:
+								toast.error(`Код ошибки: 65531 В переданном чеке есть ошибочные параметры, возможно не
+								соблюдаются условия уравнения приведенные в разделе
+								10.2.1`)
+								break;
+							case 65532:
+								toast.error(`Код ошибки: 65532 Передан недействительный параметр в JSON`)
+								break;
+							case 65533:
+								toast.error(`Код ошибки: 65533 Не удалось выбрать апплет в ФМ. Возможно в ФМ не был
+								прошит апплетом или ФМ поврежден.`)
+								break;
+							case 65534:
+								toast.error(`Код ошибки: 65534 Не удалось подключится к ФМ, ФМ не подключен или не
+								найден по указанному заводскому номеру`)
+								break;
+							case 65535:
+								toast.error(`Код ошибки: 65535 Другие ошибки. Подробности ошибки смотрите в лог файле
+								сервиса FiscalDriveAPI`)
+								break;
+							case 'ERROR_RECEIPT_MEMORY_FULL':
+								toast.error(`Отправить на сервер файлы чеков, получить
+								RECEIPT_ACK и выполнить INS_ACK_RECEIPT`)
+								break;
+							default:
+								toast.error(`Код ошибки: Неизвестная ошибка`)
+								break;
+						}
+						return
+					}
+				}
 			}
 
-			setData({ 'itemsList': [], 'transactionsList': [], 'cashierName': "", 'chequeNumber': "", 'chequeDate': "" })
-			setSendData({
-				...sendData, "actionDate": 0, "chequeId": 0, "clientAmount": 0, "clientId": 0, "currencyId": 0,
-				"saleCurrencyId": 0, "totalAmount": 0, "totalAmountInfo": 0, "transactionId": 0, "itemsList": [],
-				"transactionsList": [{ "amountIn": 0, "amountOut": data.totalPrice, "paymentTypeId": 1, "paymentPurposeId": 3 }]
+            POST("/services/desktop/api/cheque-returned", sendDataCopy).then(() => {
+				if (reduxSettings?.printReturnCheque) {
+					var domInString = printChequeRef.current.outerHTML
+					window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+				}
+	
+				setData({ 'itemsList': [], 'transactionsList': [], 'cashierName': "", 'chequeNumber': "", 'chequeDate': "" })
+				setSendData({
+					...sendData, "actionDate": 0, "chequeId": 0, "clientAmount": 0, "clientId": 0, "currencyId": 0,
+					"saleCurrencyId": 0, "totalAmount": 0, "totalAmountInfo": 0, "transactionId": 0, "itemsList": [],
+					"transactionsList": [{ "amountIn": 0, "amountOut": data.totalPrice, "paymentTypeId": 1, "paymentPurposeId": 3 }]
+				})
+				setShowConfirmModal(false)
+				toast.success(t('success'))
 			})
-			setShowConfirmModal(false)
-			toast.success(t('success'))
-		})
+        })
+
+		
 	}
 
 	async function createOfdCheque(dataCopy) {
@@ -966,14 +1269,14 @@ function Return() {
 							<div className="d-flex">
 								{reduxSettings.logoPath ?
 									<img src={reduxSettings.logoPath}
-										width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
+										width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
 										height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
 										alt="logo"
 									/>
 									:
 									<>
 										<img src={`${globalValue('url')}/logo.svg`}
-											width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
+											width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
 											height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
 											alt="logo"
 										/>

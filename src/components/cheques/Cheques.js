@@ -21,7 +21,8 @@ function Cheques() {
 	const { t } = useTranslation();
 	const dispatch = useDispatch();
 	const history = useHistory();
-	const printChequeRef = useRef(null);
+	const printChequeRef = useRef(null);	
+	const [checkCount, setCheckCount] = useState(parseInt(localStorage.getItem("check_count")) + 1);
 
 	const cashbox = useSelector(state => state.cashbox)
 	const reduxSettings = useSelector(state => state.settings.settings)
@@ -36,6 +37,7 @@ function Cheques() {
 		'toPaid': ""
 	});
 
+	const multikassaOfd = localStorage.getItem('multikassaOfd') === 'true'
 	const [data, setData] = useState([]);
 	const [selectedItem, setSelectedItem] = useState({});
 
@@ -165,8 +167,10 @@ function Cheques() {
 
 	async function printCheque(type = 1) {
 		if (type === 1) {
+			localStorage.setItem("check_count", parseInt(localStorage.getItem("check_count")) + 1)
+			setCheckCount(parseInt(localStorage.getItem("check_count")) + 1)
 			var domInString = printChequeRef.current.outerHTML
-			window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+			window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
 		}
 
 		if (type === 2) { // print to excel
@@ -273,7 +277,7 @@ function Cheques() {
 
 	function returnPrinterWidth() {
 		var name = ""
-		switch (reduxSettings.checkPrintWidth) {
+		switch (reduxSettings?.checkPrintWidth) {
 			case "58":
 				name = "w58mm"
 				break;
@@ -390,17 +394,17 @@ function Cheques() {
 								<div className="d-flex flex-column">
 									<div className="d-flex justify-content-center mb-2">
 										<div className="d-flex">
-											{reduxSettings.logoPath ?
-												<img src={reduxSettings.logoPath}
-													width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-													height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+											{reduxSettings?.logoPath ?
+												<img src={reduxSettings?.logoPath}
+													width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+													height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 													alt="logo"
 												/>
 												:
 												<>
-													<img src={`${globalValue('url')}/logo.svg`}
-														width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-														height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+													<img src={`${globalValue('url')}/logo.png`}
+														width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+														height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 														alt="logo"
 													/>
 												</>
@@ -436,6 +440,10 @@ function Cheques() {
 									</div>
 								}
 								<div className="d-flex justify-content-between">
+									<p className="fw-600">Chek raqami</p>
+									<p>{checkCount}</p>
+								</div>
+								<div className="d-flex justify-content-between">
 									<p className="fw-600">{t('cashier')}</p>
 									<p>{selectedItem.cashierName}</p>
 								</div>
@@ -463,16 +471,16 @@ function Cheques() {
 								</div>
 								{!!selectedItem.chequeOfdType &&
 									<div className="d-flex justify-content-between">
-										<p>Chek turi</p>
+										<p>{t('cheque_type')}</p>
 										<p>
 											{selectedItem.chequeOfdType === 1 &&
-												<span>Sotuv</span>
+												<span>{t('sales')}</span>
 											}
 											{selectedItem.chequeOfdType === 2 &&
-												<span>Kredit</span>
+												<span>{t('credit')}</span>
 											}
 											{selectedItem.chequeOfdType === 3 &&
-												<span>Avans</span>
+												<span>{t('avans')}</span>
 											}
 										</p>
 									</div>
@@ -546,7 +554,7 @@ function Cheques() {
 																	}
 																</div>
 																<div className="d-flex justify-content-between">
-																	<div>O'lchov birligi</div>
+																	<div>{t('uom')}</div>
 																	<div className="text-end">
 																		{item.packageCode ?
 																			<span>{item.packageName}</span>
@@ -557,14 +565,14 @@ function Cheques() {
 																</div>
 																{!!item.discountAmount &&
 																	<div className="d-flex justify-content-between">
-																		<div>Chegirma</div>
+																		<div>{t('discount')}</div>
 																		<div>
 																			<span>{formatMoney(item.discountAmount)}</span>
 																		</div>
 																	</div>
 																}
 																<div className="d-flex justify-content-between">
-																	<div>QQS ({formatMoney(item.vat)}%)</div>
+																	<div>{t('vat')} ({formatMoney(item.vat)}%)</div>
 																	<div>
 																		{item.vat === 0 ?
 																			<span>0</span>
@@ -576,11 +584,11 @@ function Cheques() {
 																{item.gtin &&
 																	<>
 																		<div className="d-flex justify-content-between">
-																			<div>Sh.k</div>
+																			<div>{t('bar_code')}</div>
 																			<div>{item.barcode}</div>
 																		</div>
 																		<div className="d-flex justify-content-between">
-																			<div>MXIK</div>
+																			<div>{t('gtin')}</div>
 																			<div>{item.gtin}</div>
 																		</div>
 																	</>
@@ -763,16 +771,19 @@ function Cheques() {
 									</div>
 								}
 								{/* FISCAL INFO */}
-								<div className="d-flex justify-content-between">
+								{/* <div className="d-flex justify-content-between">
 									<p className="fw-600">{t('serial_number')}</p>
 									<p>20220778</p>
-								</div>
-								{selectedItem?.appletVersion &&
+								</div> */}
+								{/* {selectedItem?.appletVersion &&
 									<div className="d-flex justify-content-between">
 										<p className="fw-600">{t('virtual_cashbox')}</p>
 										<p>{globalValue('projectName')}</p>
 									</div>
-								}
+								} */}
+								<div className="overflow-hidden">
+									*****************************************************************************************
+								</div>
 								{selectedItem?.terminalID &&
 									<div className="d-flex justify-content-between">
 										<p className="fw-600">{t('fm_number')}</p>
@@ -787,29 +798,30 @@ function Cheques() {
 								}
 								{/* FISCAL INFO */}
 							</div>
-							{(selectedItem?.qRCodeURL && reduxSettings.showQrCode) &&
+							{(selectedItem?.qRCodeURL && reduxSettings?.showQrCode) &&
 								<div className="d-flex justify-content-center">
+									<br></br>
 									<QRCode value={selectedItem?.qRCodeURL} size={125} />
 								</div>
 							}
-							{(selectedItem.chequeNumber && reduxSettings.showBarcode) &&
+							{(selectedItem.chequeNumber && reduxSettings?.showBarcode) &&
 								<div className="d-flex justify-content-center">
 									<Barcode value={selectedItem.chequeNumber.toString()}
-										lineColor={reduxSettings.darkTheme === true ? '#ffffff' : '#000000'}
+										lineColor={reduxSettings?.darkTheme === true ? '#ffffff' : '#000000'}
 										width={2} height={30} displayValue={false} background="transparent" />
 								</div>
 							}
 							<div className="overflow-hidden">
 								*****************************************************************************************
 							</div>
-							{!reduxSettings.additionalInformation &&
+							{!reduxSettings?.additionalInformation &&
 								<div className="d-flex justify-content-center mb-2">
 									<p>{t('thank_you_for_your_purchase')}!</p>
 								</div>
 							}
-							{reduxSettings.additionalInformation &&
+							{reduxSettings?.additionalInformation &&
 								<div className="d-flex justify-content-center">
-									<p>{reduxSettings.additionalInformationText}!</p>
+									<p>{reduxSettings?.additionalInformationText}!</p>
 								</div>
 							}
 						</div>
@@ -849,17 +861,17 @@ function Cheques() {
 					<div className="d-flex flex-column w-100">
 						<div className="d-flex justify-content-center mb-2">
 							<div className="d-flex">
-								{reduxSettings.logoPath ?
-									<img src={reduxSettings.logoPath}
-										width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-										height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+								{reduxSettings?.logoPath ?
+									<img src={reduxSettings?.logoPath}
+										width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+										height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 										alt="logo"
 									/>
 									:
 									<>
-										<img src={`${globalValue('url')}/logo.svg`}
-											width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-											height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+										<img src={`${globalValue('url')}/logo.png`}
+											width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+											height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 											alt="logo"
 										/>
 									</>
@@ -887,6 +899,10 @@ function Cheques() {
 					</div>
 				</div>
 
+				<div className="d-flex justify-content-between">
+					<p className="fw-600">Chek raqami</p>
+					<p>{checkCount}</p>
+				</div>
 				<div className="cheque-block-1 fz12">
 					<div className="d-flex justify-content-between">
 						<p className="fw-600">Kassir</p>
@@ -1099,9 +1115,9 @@ function Cheques() {
 						}
 					</div>
 					<div className="d-flex justify-content-between">
-						<p className={'fw-700 ' + (reduxSettings.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>{t('to_pay')}</p>
+						<p className={'fw-700 ' + (reduxSettings?.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>{t('to_pay')}</p>
 						{selectedItem.totalPrice &&
-							<p className={'fw-700 ' + (reduxSettings.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
+							<p className={'fw-700 ' + (reduxSettings?.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
 								{formatMoney(selectedItem.totalPrice - selectedItem.discountAmount)}
 							</p>
 						}
@@ -1264,12 +1280,13 @@ function Cheques() {
 					</div>
 				}
 				{/* FISCAL INFO */}
-				{(selectedItem?.qRCodeURL && reduxSettings.showQrCode) &&
+				{(selectedItem?.qRCodeURL && reduxSettings?.showQrCode) &&
 					<div className="d-flex justify-content-center">
+						<br></br>
 						<QRCode value={selectedItem?.qRCodeURL} size={160} />
 					</div>
 				}
-				{(selectedItem.chequeNumber && reduxSettings.showBarcode) &&
+				{(selectedItem.chequeNumber && reduxSettings?.showBarcode) &&
 					<div className="d-flex justify-content-center">
 						<Barcode value={selectedItem.chequeNumber.toString()} width={2} height={30} displayValue={false} background="transparent" />
 					</div>
@@ -1280,9 +1297,9 @@ function Cheques() {
 				<div className="d-flex justify-content-center mb-2">
 					<p>{t('thank_you_for_your_purchase')}!</p>
 				</div>
-				{reduxSettings.additionalInformation &&
+				{reduxSettings?.additionalInformation &&
 					<div className="d-flex justify-content-center">
-						<p>{reduxSettings.additionalInformationText}!</p>
+						<p>{reduxSettings?.additionalInformationText}!</p>
 					</div>
 				}
 			</div>

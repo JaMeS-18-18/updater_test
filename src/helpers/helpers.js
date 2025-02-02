@@ -24,7 +24,7 @@ export function formatMoney(amount, decimalCount = 0, decimal = ".", thousands =
 		if (!decimalCount) {
 			const state = JSON.parse(localStorage.getItem('state'))
 			if (state) {
-				decimalCount = Number(state.settings.settings.decimalPoint)
+				decimalCount = Number(state.settings.settings?.decimalPoint)
 			}
 		} else {
 			decimalCount = 0
@@ -56,7 +56,7 @@ export function formatMoneyCheque(amount, decimalCount = 0, decimal = ".", thous
 	} else {
 		const state = JSON.parse(localStorage.getItem('state'))
 		if (state) {
-			decimalCount = state.settings.settings.decimalPoint
+			decimalCount = state.settings?.settings?.decimalPoint
 		}
 	}
 

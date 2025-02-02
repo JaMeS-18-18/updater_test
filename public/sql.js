@@ -8,19 +8,19 @@ var db = null
 var dbFile = null
 var migrationFilesPath = null
 
-if (isDev) {
-	dbFile = path.resolve(__dirname, '../gitignore/db.sqlite3')
-	db = new sqlite3.Database(dbFile, (err) => {
-		if (err) console.error('Database opening error: ', err);
-	});
-	migrationFilesPath = path.resolve(__dirname, '../extraResources/migrations/')
-} else {
+// if (isDev) {
+// 	dbFile = path.resolve(__dirname, '../gitignore/db.sqlite3')
+// 	db = new sqlite3.Database(dbFile, (err) => {
+// 		if (err) console.error('Database opening error: ', err);
+// 	});
+// 	migrationFilesPath = path.resolve(__dirname, '../extraResources/migrations/')
+// } else {
 	dbFile = path.join(app.getPath('userData'), 'db.sqlite3').toString()
 	db = new sqlite3.Database(dbFile, (err) => {
 		if (err) console.error('Database opening error: ', err);
 	});
 	migrationFilesPath = path.join(path.dirname(__dirname), '../extraResources/', 'migrations');
-}
+// }
 
 (async () => {
 	// open the database

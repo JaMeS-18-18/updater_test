@@ -65,6 +65,7 @@ function Tab({ tabId, activeTabId }) {
 	const dataRef = useRef({});
 
 	const [products, setProducts] = useState([]) // Быстрый подбор товаров
+	const [showModalIkpu, setShowModalIkpu] = useState(false);
 	const [searchByNameValue, setSearchByNameValue] = useState("") // Быстрый подбор товаров
 	const [loyaltySearchUserInput, setLoyaltySearchUserInput] = useState("");
 	const [loyaltyUserInfo, setLoyaltyUserInfo] = useState({
@@ -165,6 +166,9 @@ function Tab({ tabId, activeTabId }) {
 		"organizationReturnDate": "",
 	});
 
+	// Format the message
+	var formattedMessage;
+
 	function searchProduct(params = { barcode: "", byName: false, promotion: false, promotionProductBarcode: "", forcePomotionQuantity: 0 }) {
 		if (!cashbox.ofd && !params.barcode) return
 		var barcode = params.barcode
@@ -184,7 +188,7 @@ function Tab({ tabId, activeTabId }) {
 			}
 		}
 
-		window.electron.dbApi.findProducts(barcode, barcodeScales, reduxSettings.productGrouping, byName).then(response => {
+		window.electron.dbApi.findProducts(barcode, barcodeScales, reduxSettings?.productGrouping, byName).then(response => {
 			var acceptSale = false
 			if (!cashbox.saleMinus && response?.row?.balance > 0) { // Если отключена функция продажа в минус и имеется товар то продавать
 				acceptSale = true
@@ -217,15 +221,12 @@ function Tab({ tabId, activeTabId }) {
 						weight = Number(barcode.substring(8, 12)) / 1000
 					}
 				}
-				console.log('do', barcode.substring(10, 12))
+				// console.log('do', barcode.substring(10, 12))
 				if (response.scaleProduct && barcodeFirst2Digits === Number(reduxSettings.piecePrefix)) {
 					weight = Number(barcode.substring(10, 12))
 				}
 
-				if (response.row.uomId !== 1 &&
-					(response.row.balance > 0 && response.row.balance < 1) &&
-					barcodeFirst2Digits === Number(reduxSettings.piecePrefix)
-				) {
+				if (response.row.uomId !== 1 && (response.row.balance > 0 && response.row.balance < 1) && barcodeFirst2Digits === Number(reduxSettings.piecePrefix)) {
 					if (cashbox.saleMinus) {
 						weight = 1
 					} else {
@@ -237,13 +238,14 @@ function Tab({ tabId, activeTabId }) {
 				if (response.row.uomId === 1 && barcodeFirst2Digits === Number(reduxSettings.weightPrefix)) {
 					weight = parseInt(weight, 10);
 				}
-				console.log('posle', weight)
+				// console.log('posle', weight)
 				// Logic for scale product
 
 				//console.log(response.row);
 				response.row.active_price = activePrice.active
 				response.row.discountAmount = 0
 				response.row.outType = false
+				response.row.quantity = weight
 
 				response.row.modificationList = JSON.parse(response?.row?.modificationList)
 				response.row.unitList = JSON.parse(response?.row?.unitList)
@@ -316,7 +318,7 @@ function Tab({ tabId, activeTabId }) {
 				addToList(response.row, weight)
 			} else {
 				if (!response.row || !acceptSale) {
-					if (reduxSettings.showProductOutOfStock) {
+					if (reduxSettings?.showProductOutOfStock) {
 						setShowProductOutOfStock(true)
 					} else {
 						txt = t('product_out_of_stock')
@@ -552,13 +554,13 @@ function Tab({ tabId, activeTabId }) {
 		}
 
 		setSearchInput("")
-		if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings.selectBottomSearch) {
+		if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings?.selectBottomSearch) {
 			bottomProductSearchRef.current.focus()
 			// Без этого не будет работать setState когда поиск не пустой
 			window.electron.dbApi.getProducts().then(response => {
 				setProducts([...products])
 			})
-		} else if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings.leaveBottomSearchText) {
+		} else if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings?.leaveBottomSearchText) {
 			searchRef.current.focus()
 		} else {
 			searchRef.current.focus()
@@ -726,7 +728,7 @@ function Tab({ tabId, activeTabId }) {
 						break;
 					}
 				}
-				if (reduxSettings.advancedSearchMode) {
+				if (reduxSettings?.advancedSearchMode) {
 					bottomProductSearchRef.current.select()
 				}
 				return;
@@ -986,6 +988,8 @@ function Tab({ tabId, activeTabId }) {
 				(100 + Number(dataCopy.itemsList[i]['vat'])) *
 				Number(dataCopy.itemsList[i]['vat'])
 		}
+		dataCopy.totalPrice = Math.floor(dataCopy.totalPrice * 100) / 100
+
 		setData(dataCopy)
 	}
 
@@ -1277,6 +1281,82 @@ function Tab({ tabId, activeTabId }) {
 		})
 	}
 
+	const multikassaOfd = reduxSettings?.multikassaOfd;
+
+	async function getProductInfoFromMultikassa(searchMxikCode) {
+		const url = `http://localhost:8080/api/v1/products/check?mxikCode=${searchMxikCode}`;
+	
+		try {
+			const response = await fetch(url, {
+				method: 'GET',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+			});
+	
+			if (!response.ok) {
+				throw new Error(`HTTP error! status: ${response.status}`);
+			}
+	
+			const result = await response.json();
+			
+			// Ensure correct path access with optional chaining
+			return result.data?.data?.[0]?.info || {}; // Return an empty object if not available
+		} catch (error) {
+			console.error('Fetch error:', error);
+			return {};
+		}
+	}
+
+	function mapToMultikassa(input) {
+		const currentDateTime = new Date().toISOString().replace('T', ' ').slice(0, 19); // Format: YYYY-MM-DD HH:MM:SS
+	
+		// Return promises for each item to handle async API calls within a non-async function
+		const itemPromises = input.itemsList.map(item => {
+			return getProductInfoFromMultikassa(item.gtin).then(details => {
+				const packageInfo = details.packageNames?.[0] || {};
+	
+				return {
+					classifier_class_code: item.gtin,
+					product_mark: item.marking == 0,
+					product_name: item.productName,
+					product_barcode: item.barcode,
+					product_barcodes: [
+						{
+							barcode: item.barcode,
+							type: null
+						}
+					],
+					product_price: parseInt(item.salePrice, 10),
+					total_product_price: item.totalPrice,
+					product_without_vat: item.vat === 0,
+					product_discount: item.discountAmount,
+					count: item.quantity,
+					product_vat_percent: item.vat,
+					other: 0,
+					product_package: String(packageInfo.code || "default_code"),
+					product_package_name: packageInfo.nameLat || "default_name"
+
+				};
+			});
+		});
+	
+		return Promise.all(itemPromises).then(items => ({
+			module_operation_type: "3",
+			receipt_sum: input.totalPrice * 100,
+			receipt_cashier_name: localStorage.getItem("cashierName"),
+			receipt_gnk_receivedcash: input.transactionsList.find(t => t.paymentTypeId === 1)?.amountIn * 100 || 0,
+			receipt_gnk_receivedcard: input.transactionsList.find(t => t.paymentTypeId !== 1)?.amountIn * 100 || 0,
+			receipt_gnk_time: currentDateTime,
+			items: items,
+			location: {
+				latitude: parseFloat(localStorage.getItem("lat")),
+				longitude: parseFloat(localStorage.getItem("lon")) //"tradepoint_coordinates": "(41.2969055300243,69.25275371796873)",
+			}
+		}));
+	}
+	
+
 	async function createCheque(e, type = "cash") {
 		if (e) e?.preventDefault();
 		if (globalDisable.current) {
@@ -1291,7 +1371,7 @@ function Tab({ tabId, activeTabId }) {
 		dataCopy.chequeNumber = generateChequeNumber(cashbox.posId, cashbox.cashboxId, cashbox.id ? cashbox.id : shift.id)
 
 		if (Number(dataCopy.paid) > 99999999) {
-			if (!reduxSettings.amountExceedsLimit) {
+			if (!reduxSettings?.amountExceedsLimit) {
 				toast.error(t('amount_exceeds_maximum'))
 				return;
 			}
@@ -1308,7 +1388,7 @@ function Tab({ tabId, activeTabId }) {
 			dataCopy.transactionsList.push({ "amountIn": 0, "amountOut": dataCopy.change, "paymentTypeId": 1, "paymentPurposeId": 2 })
 		}
 
-		if (type === "F1" && reduxSettings.showCashPaymentF1) {
+		if (type === "F1" && reduxSettings?.showCashPaymentF1) {
 			dataCopy.payedWith = "F1"
 			dataCopy.transactionsList = []
 			dataCopy.paid = Number(transactionsListCash.amountIn)
@@ -1317,7 +1397,7 @@ function Tab({ tabId, activeTabId }) {
 				dataCopy.transactionsList.push({ "amountIn": 0, "amountOut": dataCopy.change, "paymentTypeId": 1, "paymentPurposeId": 2 })
 			}
 		}
-		if (type === "F1" && !reduxSettings.showCashPaymentF1) {
+		if (type === "F1" && !reduxSettings?.showCashPaymentF1) {
 			dataCopy.payedWith = "F1"
 			dataCopy.transactionsList = []
 			dataCopy.paid = Number(dataCopy.totalPrice)
@@ -1511,25 +1591,40 @@ function Tab({ tabId, activeTabId }) {
 			}
 		}
 
-		if (reduxSettings.ofd && !reduxSettings.ofdFactoryId) {
+		if (reduxSettings?.ofd && !reduxSettings?.ofdFactoryId) {
 			toast.error('FactoryID не найден в настройках')
 			return
 		}
-		//reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId
+		let invalidProducts = [];
 		if (reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId) {
+			for (let i = 0; i < dataCopy.itemsList.length; i++) {
+				const item = dataCopy.itemsList[i];
+				if (!item['gtin'] || !item['packageCode']) {
+					invalidProducts.push(`Продукт №${i + 1} ${item.name}`);
+				}
+			}
+		}
+		if (invalidProducts.length > 0) {
+			toast.error(`Продукты без ofd:\n${invalidProducts.join(', ')}`);
+			return;
+		}
+
+
+		//reduxSettings.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId
+		if (reduxSettings?.ofd && cashbox.ofd && reduxSettings?.ofdFactoryId) {
 			var printerResponse;
 			//var receiptPrinter = reduxSettings.receiptPrinter;
-			var receiptPrinter = reduxSettings.receiptPrinter;
-			console.log(receiptPrinter)
+			var receiptPrinter = reduxSettings?.receiptPrinter;
+			// console.log(receiptPrinter)
 			//XP-58C (copy 1)
 			var domInString2 = printChequeRef2.current.outerHTML
 			window.electron.appApi.print(domInString2, receiptPrinter)
 
 			await delay(1000)
 
-			console.log('delay:', receiptPrinter)
+			// console.log('delay:', receiptPrinter)
 			printerResponse = await window.electron.appApi.cmdPrinter(receiptPrinter)
-			console.log("printerResponse", printerResponse)
+			// console.log("printerResponse", printerResponse)
 			const lines = printerResponse.replace(/"/g, ``).split(/\r?\n/)
 			var printerJobIds = []
 			for (let i = 0; i < lines.length; i++) {
@@ -1549,7 +1644,7 @@ function Tab({ tabId, activeTabId }) {
 				}
 			}
 
-			if (reduxSettings.ofd && cashbox.ofd) {
+			if (reduxSettings?.ofd && cashbox.ofd) {
 				if (printerResponse.includes("Id")) {
 					toast.error(t('printer_problems'))
 					return
@@ -1766,8 +1861,42 @@ function Tab({ tabId, activeTabId }) {
 			}
 		}
 
+		if (multikassaOfd) {
+			try {
+				// Call createOfdMultikassa and wait for the result
+
+				var responseMultikassa = await createOfdMultikassa(dataCopy);
+
+		
+				// Update dataCopy with the returned values
+				dataCopy.fiscalResult = {
+					AppletVersion: responseMultikassa.appletVersion,
+					DateTime: responseMultikassa.dateTime,
+					FiscalSign: responseMultikassa.fiscalSign,
+					ReceiptSeq: responseMultikassa.receiptSeq,
+					QRCodeURL: responseMultikassa.qRCodeURL,
+					TerminalID: responseMultikassa.terminalID,
+
+				}
+				dataCopy.requestOfd = JSON.stringify(responseMultikassa.requestOfd);
+				dataCopy.responseOfd = JSON.stringify(responseMultikassa.responseOfd);
+				dataCopy.chequeDate = responseMultikassa.chequeDate;
+				dataCopy.chequeTimeEnd = responseMultikassa.chequeTimeEnd;
+				dataCopy.appletVersion = responseMultikassa.appletVersion;
+				dataCopy.dateTime = responseMultikassa.dateTime;
+				dataCopy.fiscalSign = responseMultikassa.fiscalSign;
+				dataCopy.receiptSeq = responseMultikassa.receiptSeq;
+				dataCopy.qRCodeURL = responseMultikassa.qRCodeURL;
+				dataCopy.terminalID = responseMultikassa.terminalID;
+		
+			} catch (error) {
+				// Handle any errors during the process
+				// toast.error("Error in multikassaOfd processing:", error);
+			}
+		}
+
 		//console.log(dataCopy?.uzumPaymentId)
-		if (reduxSettings.ofd && dataCopy?.uzumPaymentId) {
+		if (reduxSettings?.ofd && dataCopy?.uzumPaymentId) {
 			var uzumPayloadQr = {
 				"payment_id": dataCopy?.uzumPaymentId,
 				"fiscal_url": dataCopy?.qRCodeURL,
@@ -1780,7 +1909,7 @@ function Tab({ tabId, activeTabId }) {
 			}
 		}
 
-		if (reduxSettings.humoTerminal && transactionsListTerminal?.amountIn && Number(transactionsListTerminal?.paymentTypeId) === 2) {
+		if (reduxSettings?.humoTerminal && transactionsListTerminal?.amountIn && Number(transactionsListTerminal?.paymentTypeId) === 2) {
 			var pinPadResult = await window.electron.appApi.cmdCommand(transactionsListTerminal?.amountIn)
 			pinPadResult = pinPadResult.split("\r\n")
 			if (pinPadResult[0] !== '000') {
@@ -1804,30 +1933,30 @@ function Tab({ tabId, activeTabId }) {
 		await delay(200)
 
 		window.electron.dbApi.insertCheques(dataCopy).then(() => {
-			if (reduxSettings.ofd) {
+			if (reduxSettings?.ofd || multikassaOfd) {
 				var domInString3 = printChequeRef.current.outerHTML
-				window.electron.appApi.print(domInString3, reduxSettings.receiptPrinter)
+				window.electron.appApi.print(domInString3, reduxSettings?.receiptPrinter)
 			}
-			if (!reduxSettings.ofd) {
+			if (!reduxSettings?.ofd && !multikassaOfd) {
 				//setData(dataCopy)
 				var domInString = printChequeRef.current.outerHTML
-				if (!reduxSettings.printerBroken && Number(reduxSettings.printTo) === 0) {
-					window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
-					if (reduxSettings.print2cheques) {
+				if (!reduxSettings?.printerBroken && Number(reduxSettings?.printTo) === 0) {
+					window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
+					if (reduxSettings?.print2cheques) {
 						setTimeout(() => {
-							window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+							window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
 						}, 300);
 					}
 				}
 
-				if (reduxSettings.print2cheques) {
+				if (reduxSettings?.print2cheques) {
 					setTimeout(() => {
-						window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+						window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
 					}, 300);
 				}
 			}
 
-			if (Number(reduxSettings.printTo) === 1) { // print to excel
+			if (Number(reduxSettings?.printTo) === 1) { // print to excel
 				var temporaryData = [
 					{ "A": t('pos'), "B": cashbox.posName },
 					{ "A": t('cashier'), "B": account.firstName + " " + account.lastName },
@@ -1883,7 +2012,7 @@ function Tab({ tabId, activeTabId }) {
 				const args = {
 					data: wb,
 					chequeNumber: dataCopy.chequeNumber,
-					openExcelFile: reduxSettings.openExcelFile,
+					openExcelFile: reduxSettings?.openExcelFile,
 				}
 				window.electron.appApi.uploadExcelToLocalDisk(args)
 			}
@@ -1895,7 +2024,7 @@ function Tab({ tabId, activeTabId }) {
 				setInitialLoyaltyState()
 			}
 
-			if (window.navigator.onLine && internetConnection !== 2 && reduxSettings.autoSync) {
+			if (window.navigator.onLine && internetConnection !== 2 && reduxSettings?.autoSync) {
 				if (type !== "loyalty") {
 					dataCopy.cashierLogin = dataCopy.login
 					syncCheque(dataCopy)
@@ -1909,6 +2038,10 @@ function Tab({ tabId, activeTabId }) {
 			setInitialDataState(type)
 			handlePaymentModal(false)
 
+			if (!reduxSettings?.printerBroken) {
+				localStorage.setItem("check_count", parseInt(localStorage.getItem("check_count")) + 1)
+			}
+
 			if (type === "F1") {
 				setShowOnlyCashPaymentModal(false)
 			}
@@ -1916,12 +2049,52 @@ function Tab({ tabId, activeTabId }) {
 				setShowOnlyTerminalPaymentModal(false)
 			}
 
-			if (window.navigator.onLine && internetConnection !== 2 && reduxSettings.autoSync && countUnsyncProducts >= 30) {
+			if (window.navigator.onLine && internetConnection !== 2 && reduxSettings?.autoSync && countUnsyncProducts >= 30) {
 				syncCheques()
 			}
 		}).catch(e => {
 			toast.error(e)
 		})
+	}
+
+	async function createOfdMultikassa(dataCopy) {
+		try {
+			// Map data for Multikassa
+			const mappedData = await mapToMultikassa(dataCopy);
+	
+			// Set requestOfd
+			dataCopy.requestOfd = mappedData;
+	
+			// Send the request to the external API
+			const responseOfd = await POST("http://localhost:8080/api/v1/operations", JSON.stringify(dataCopy.requestOfd), false, false);
+	
+			// Handle the response
+			if (responseOfd?.success) {
+				dataCopy.responseOfd = responseOfd;
+	
+				// Populate additional fields
+				dataCopy.chequeDate = getUnixTime();
+				dataCopy.chequeTimeEnd = getUnixTime();
+				dataCopy.appletVersion = responseOfd.data?.receipt_gnk_appletversion;
+				dataCopy.dateTime = responseOfd.data?.receipt_gnk_datetime;
+				dataCopy.fiscalSign = responseOfd.data?.receipt_gnk_fiscalsign;
+				dataCopy.receiptSeq = responseOfd.data?.receipt_gnk_receiptseq;
+				dataCopy.qRCodeURL = responseOfd.data?.receipt_gnk_qrcodeurl;
+				dataCopy.terminalID = responseOfd.data?.module_gnk_id;
+			} else {
+				// Handle errors from the response
+				const formattedMessage = responseOfd.data.error.message + ": " + 
+					responseOfd.data.error.products.map(product => product).join(", ");
+				toast.error(formattedMessage, { autoClose: 10000 });
+			}
+	
+			// Return the updated dataCopy
+			return dataCopy;
+		} catch (error) {
+			// Handle any errors during the process
+			// toast.error("Error during createOfdMultikassa: " + error.message, { autoClose: 10000 });
+			return null
+		}
 	}
 
 	async function createOfdCheque(dataCopy, dateTime) {
@@ -1949,7 +2122,7 @@ function Tab({ tabId, activeTabId }) {
 			"method": method,
 			"id": 2,
 			"params": {
-				"FactoryID": reduxSettings.ofdFactoryId,
+				"FactoryID": reduxSettings?.ofdFactoryId,
 				"Receipt": {
 					"IsRefund": 0,
 					"ReceivedCash": 0,
@@ -1976,14 +2149,14 @@ function Tab({ tabId, activeTabId }) {
 
 		if (transactionsListCash.amountIn) {
 			if (Number(transactionsListCash.amountIn) >= Number(dataCopy.totalPrice)) {
-				ofdData.params.Receipt.ReceivedCash = Number(dataCopy.totalPrice) * 100
+				ofdData.params.Receipt.ReceivedCash = parseInt(Number(dataCopy.totalPrice) * 100)
 			} else {
-				ofdData.params.Receipt.ReceivedCash = Number(transactionsListCash.amountIn) * 100
+				ofdData.params.Receipt.ReceivedCash = parseInt(Number(transactionsListCash.amountIn) * 100)
 			}
 		}
 
 		if (transactionsListTerminal.amountIn) {
-			ofdData.params.Receipt.ReceivedCard = Number(transactionsListTerminal.amountIn) * 100
+			ofdData.params.Receipt.ReceivedCard = parseInt(Number(transactionsListTerminal.amountIn) * 100)
 		}
 
 		for (let i = 0; i < dataCopy.itemsList.length; i++) {
@@ -2004,12 +2177,12 @@ function Tab({ tabId, activeTabId }) {
 			ofdData.params.Receipt.Items.push(
 				{
 					"SPIC": dataCopy.itemsList[i]['gtin'], // Уникальный номер в едином каталоге
-					"VATPercent": Number(dataCopy.itemsList[i]['vat']),
-					"VAT": Number(vat.toFixed(0)) * 100,
-					"Discount": Number(dataCopy.itemsList[i]['discountAmount'].toFixed(0)) * 100,
-					"Price": dataCopy.itemsList[i]['quantity'] * Number(dataCopy.itemsList[i]['salePrice']) * 100,
+					"VATPercent": parseInt(Number(dataCopy.itemsList[i]['vat'])),
+					"VAT": parseInt(Number(vat) * 100),
+					"Discount": parseInt(dataCopy.itemsList[i]['discountAmount']) * 100,
+					"Price": parseInt(dataCopy.itemsList[i]['quantity'] * Number(dataCopy.itemsList[i]['salePrice']) * 100),
 					"Barcode": dataCopy.itemsList[i]['barcode'],
-					"Amount": dataCopy.itemsList[i]['quantity'] * 1000,
+					"Amount": parseInt(Number(dataCopy.itemsList[i]['quantity']) * 1000),
 					"Label": dataCopy.itemsList[i]['markingNumber'] ?? "", // маркированные товары сигареты
 					"Units": dataCopy.itemsList[i]['ofdUomId'],
 					"packageCode": dataCopy.itemsList[i]['packageCode'],
@@ -2058,8 +2231,8 @@ function Tab({ tabId, activeTabId }) {
 		setTransactionsListTerminal({ "amountIn": "", "amountOut": 0, "paymentTypeId": 2, "paymentPurposeId": 1 })
 
 		if (
-			(reduxSettings.selectClientOnSale && data.clientId) ||
-			(reduxSettings.selectOrganizationOnSale && data.organizationId)
+			(reduxSettings?.selectClientOnSale && data.clientId) ||
+			(reduxSettings?.selectOrganizationOnSale && data.organizationId)
 		) {
 			setShowOnlyCashPaymentModal(false)
 			closeOnlyTerminalPaymentModal()
@@ -2127,7 +2300,7 @@ function Tab({ tabId, activeTabId }) {
 		if (tabId === activeTabId && data.itemsList.length > 0) {
 			if (event.keyCode === 112) { // F1 Show Only cash modal
 				setTransactionsListCash({ ...transactionsListCash, "amountIn": Number(data.totalPrice) })
-				if (reduxSettings.showCashPaymentF1) {
+				if (reduxSettings?.showCashPaymentF1) {
 					setShowOnlyCashPaymentModal(true)
 					setTimeout(() => {
 						amountInRef.current.select()
@@ -2142,7 +2315,7 @@ function Tab({ tabId, activeTabId }) {
 			}
 			if (event.keyCode === 113) { // F2 Show Only terminal modal
 				setTransactionsListTerminal({ ...transactionsListTerminal, "amountIn": Number(data.totalPrice) })
-				if (reduxSettings.showTerminalPaymentF2) {
+				if (reduxSettings?.showTerminalPaymentF2) {
 					setShowOnlyTerminalPaymentModal(true)
 					setTimeout(() => {
 						document.getElementById("confirmButton").focus();
@@ -2176,7 +2349,7 @@ function Tab({ tabId, activeTabId }) {
 				return
 			}
 			if (event.keyCode === 120) { // F9 Delete all products
-				if (reduxSettings.showConfirmModalDeleteAllItems) {
+				if (reduxSettings?.showConfirmModalDeleteAllItems) {
 					setShowConfirmModalDeleteAllItems(true)
 					setTimeout(() => {
 						document.getElementById("confirmButton").focus();
@@ -2190,7 +2363,7 @@ function Tab({ tabId, activeTabId }) {
 
 	function printChequeCopy() {
 		var domInString = printChequeRef.current.outerHTML
-		window.electron.appApi.print(domInString, reduxSettings.receiptPrinter)
+		window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
 	}
 
 	// ПРОДАЖА В ДОЛГ
@@ -2491,7 +2664,7 @@ function Tab({ tabId, activeTabId }) {
 		if (search.length > 0) {
 			window.electron.dbApi.findProductsByName({
 				'search': search,
-				'searchExact': reduxSettings.searchExact,
+				'searchExact': reduxSettings?.searchExact,
 			}).then(response => {
 				setProducts(response.row)
 			})
@@ -2502,7 +2675,7 @@ function Tab({ tabId, activeTabId }) {
 	// БЫСТРЫЙ ПОДБОР ТОВАРОВ
 
 	function deleteAllItemsConfirModal() {
-		if (reduxSettings.showConfirmModalDeleteAllItems) {
+		if (reduxSettings?.showConfirmModalDeleteAllItems) {
 			setShowConfirmModalDeleteAllItems(true)
 			setTimeout(() => {
 				document.getElementById("confirmButton").focus();
@@ -2513,7 +2686,7 @@ function Tab({ tabId, activeTabId }) {
 	}
 
 	function deleteItemConfirModal(index) {
-		if (reduxSettings.showConfirmModalDeleteItem) {
+		if (reduxSettings?.showConfirmModalDeleteItem) {
 			setShowConfirmModalDeleteItem({ 'bool': true, 'index': index })
 			setTimeout(() => {
 				document.getElementById("confirmButton").focus();
@@ -2524,7 +2697,7 @@ function Tab({ tabId, activeTabId }) {
 	}
 
 	function deleteItem(index) {
-		if (reduxSettings.showConfirmModalDeleteItem) {
+		if (reduxSettings?.showConfirmModalDeleteItem) {
 			setShowConfirmModalDeleteItem({ 'bool': false, 'index': 0 })
 		}
 		var dataCopy = { ...data }
@@ -2647,21 +2820,59 @@ function Tab({ tabId, activeTabId }) {
 	}
 
 	function exactAmount(type) {
+
+		const totalPrice = Number(data.totalPrice).toFixed(4);
+
 		if (type === 'cash') {
-			setTransactionsListCash({
-				"amountIn": Number(data.totalPrice) - Number(transactionsListTerminal.amountIn),
-				"amountOut": 0,
-				"paymentTypeId": 1,
-				"paymentPurposeId": 1
-			})
+			if (transactionsListCash.amountIn === 0 && transactionsListTerminal.amountIn === data.totalPrice) {
+				setTransactionsListCash({
+					"amountIn": parseFloat(totalPrice), // Maintain as a float with two decimals if necessary
+					"amountOut": 0,
+					"paymentTypeId": 1,
+					"paymentPurposeId": 1
+				});
+
+				setTransactionsListTerminal({
+					"amountIn": 0,
+					"amountOut": 0,
+					"paymentTypeId": 2,
+					"paymentPurposeId": 1
+				});
+			} else {
+				const cashAmount = parseFloat((totalPrice - transactionsListTerminal.amountIn).toFixed(4));
+				setTransactionsListCash({
+					"amountIn": cashAmount,
+					"amountOut": 0,
+					"paymentTypeId": 1,
+					"paymentPurposeId": 1
+				});
+			}
 		}
+
 		if (type === 'terminal') {
-			setTransactionsListTerminal({
-				"amountIn": Number(data.totalPrice) - Number(transactionsListCash.amountIn),
-				"amountOut": 0,
-				"paymentTypeId": 2,
-				"paymentPurposeId": 1
-			})
+			if (transactionsListTerminal.amountIn === 0 && transactionsListCash.amountIn === data.totalPrice) {
+				setTransactionsListTerminal({
+					"amountIn": parseFloat(totalPrice),
+					"amountOut": 0,
+					"paymentTypeId": 2,
+					"paymentPurposeId": 1
+				});
+
+				setTransactionsListCash({
+					"amountIn": 0,
+					"amountOut": 0,
+					"paymentTypeId": 1,
+					"paymentPurposeId": 1
+				});
+			} else {
+				const terminalAmount = parseFloat((totalPrice - transactionsListCash.amountIn).toFixed(4));
+				setTransactionsListTerminal({
+					"amountIn": terminalAmount,
+					"amountOut": 0,
+					"paymentTypeId": 2,
+					"paymentPurposeId": 1
+				});
+			}
 		}
 	}
 
@@ -2778,7 +2989,7 @@ function Tab({ tabId, activeTabId }) {
 			storageChequeListCopy = [...onlineChequeList]
 		}
 
-		if (reduxSettings.postponeOffline) {
+		if (reduxSettings?.postponeOffline) {
 			for (let i = 0; i < storageChequeListCopy.length; i++) {
 				if (index === i) {
 					storageChequeListCopy[i]['selected'] = true
@@ -2788,7 +2999,7 @@ function Tab({ tabId, activeTabId }) {
 				}
 			}
 		}
-		if (reduxSettings.postponeOnline) {
+		if (reduxSettings?.postponeOnline) {
 			for (let i = 0; i < storageChequeListCopy.length; i++) {
 				if (index === i) {
 					storageChequeListCopy[i]['selected'] = true
@@ -2802,7 +3013,7 @@ function Tab({ tabId, activeTabId }) {
 
 	function selectSavedChequeDone() {
 		var storageChequeListCopy = [...storageChequeList]
-		if (reduxSettings.postponeOffline) {
+		if (reduxSettings?.postponeOffline) {
 			if (!storageChequeListCopy || !storageChequeListCopy.length) {
 				toast.error('Выберите чек')
 				return
@@ -2819,13 +3030,13 @@ function Tab({ tabId, activeTabId }) {
 			return
 		}
 
-		if (reduxSettings.postponeOffline) {
+		if (reduxSettings?.postponeOffline) {
 			setData(foundCheque)
 			setShowSavedChequesModal(false)
 			setSelectedChequeFromState([])
 			localStorage.setItem('chequeList', JSON.stringify(storageChequeListCopy))
 		}
-		if (reduxSettings.postponeOnline) {
+		if (reduxSettings?.postponeOnline) {
 			foundCheque['chequeTimeStart'] = getUnixTime()
 			foundCheque['chequeTimeEnd'] = ""
 			foundCheque['appletVersion'] = ""
@@ -2918,7 +3129,7 @@ function Tab({ tabId, activeTabId }) {
 		if (dataCopy['discount'] > 0) {
 			dataCopy['discountAmount'] = Number(dataCopy['totalPriceBeforeDiscount']) - Number(dataCopy['totalPrice'])
 		}
-		console.log(dataCopy);
+		// console.log(dataCopy);
 
 		setData(dataCopy)
 		setShowAgentChequesModal(false)
@@ -2985,7 +3196,7 @@ function Tab({ tabId, activeTabId }) {
 
 	function returnPrinterWidth() {
 		var name = ""
-		switch (reduxSettings.checkPrintWidth) {
+		switch (reduxSettings?.checkPrintWidth) {
 			case "58":
 				name = "w58mm"
 				break;
@@ -3035,18 +3246,49 @@ function Tab({ tabId, activeTabId }) {
 		);
 	}
 
-	useEffect(() => {
-		dispatch(SET_TAB_CHEQUE(data))
-		window.addEventListener('keydown', onKeyDown)
-		if (reduxSettings.showNumberOfProducts) {
-			calculateNumberOfProducts()
-		}
-		return () => {
-			window.removeEventListener('keydown', onKeyDown)
-		}
+	useEffect( async() => {
+		let getData =  await JSON.parse(localStorage.getItem("tabCheque"))											   
+		  if (getData) {
+			let getDataFilter = await getData.find(item => item.tabId == activeTabId)
+			if (getDataFilter) {
+			  setData({...getDataFilter, tabId: activeTabId})
+			 await localStorage.setItem("tabCheque", JSON.stringify(getData))
+			}
+		  }
+	  	}, [activeTabId])																																																		   
+	
+	  	useEffect(() => {
+	
+			if (data.tabId == activeTabId) {
+			let getData = JSON.parse(localStorage.getItem("tabCheque"))
+			if (getData) {
+				let getDataFilter = getData.find(item => item.tabId == activeTabId)
+				let getDataIndex = getData.findIndex(item => item.tabId == activeTabId)
+				if (!getDataFilter) {
+				console.log('if ishladi');
+				getData.push(data)
+				localStorage.setItem("tabCheque", JSON.stringify(getData))
+				}else {
+				getData[getDataIndex] = {...data}
+				localStorage.setItem("tabCheque", JSON.stringify(getData))
+				}
+			} else {
+				localStorage.setItem("tabCheque", JSON.stringify([data]))
+			}
+		
+			dispatch(SET_TAB_CHEQUE({ ...data }))
+			}
+		// window.addEventListener('keydown', onKeyDown)
+		// if (reduxSettings.showNumberOfProducts) {
+		// 	calculateNumberOfProducts()
+		// }
+		// return () => {
+		// 	window.removeEventListener('keydown', onKeyDown)
+		// }
 	}, [activeTabId, data.totalPrice, transactionsListCash, transactionsListTerminal]) // eslint-disable-line react-hooks/exhaustive-deps
 	// data.totalPrice что б onKeyDown перезаписывался и брал последний обновленный стейт
 	// ибо сет таймоут и листенеры берут то состояние в момент когда они были обявлены
+	
 
 	useEffect(() => {
 		if (
@@ -3084,8 +3326,10 @@ function Tab({ tabId, activeTabId }) {
 
 	useEffect(() => {
 		if (backendHelpers?.tabCheque?.itemsList?.length > 0 && backendHelpers?.tabCheque?.tabId === tabId) {
-			setData(backendHelpers?.tabCheque)
+			setData({...backendHelpers?.tabCheque})
+      		console.log('ishladi');
 		} else {
+			console.log('ishlamadi');
 			setData({ ...data, tabId: tabId })
 		}
 	}, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3196,7 +3440,7 @@ function Tab({ tabId, activeTabId }) {
 									{cashbox.defaultCurrency === 2 ? 'USD' : t('sum')}
 								</button>
 							</div>
-							{reduxSettings.selectClientOnSale &&
+							{reduxSettings?.selectClientOnSale &&
 								<div className="d-flex ms-2" style={{ 'height': '38px' }}
 									onClick={() => selectPaymentType('client')}>
 									<button className="btn btn-primary" tabIndex="-1">
@@ -3204,7 +3448,7 @@ function Tab({ tabId, activeTabId }) {
 									</button>
 								</div>
 							}
-							{reduxSettings.selectOrganizationOnSale &&
+							{reduxSettings?.selectOrganizationOnSale &&
 								<div className="d-flex ms-2" style={{ 'height': '38px' }}
 									onClick={() => selectPaymentType('organization')}>
 									<button className="btn btn-primary" tabIndex="-1">
@@ -3212,7 +3456,7 @@ function Tab({ tabId, activeTabId }) {
 									</button>
 								</div>
 							}
-							{(reduxSettings.showLastScannedProduct && data.itemsList.length > 0) &&
+							{(reduxSettings?.showLastScannedProduct && data.itemsList.length > 0) &&
 								<div className="vertical-center ms-2">
 									<h3 className="last-product">{data.itemsList[data.itemsList.length - 1]['productName']}</h3>
 								</div>
@@ -3221,7 +3465,7 @@ function Tab({ tabId, activeTabId }) {
 						</div>
 						<div className="d-flex gap-2">
 							<div>
-								{reduxSettings.showNumberOfProducts &&
+								{reduxSettings?.showNumberOfProducts &&
 									<div className="vertical-center me-2">
 										<button className="btn btn-outline-secondary fz18" disabled title={t('number_of_products')}>{numberOfProducts}</button>
 									</div>
@@ -3470,7 +3714,7 @@ function Tab({ tabId, activeTabId }) {
 									<b className="text-uppercase">{t('to_pay')}:</b><br />
 									<div className="d-flex justify-content-between">
 										<div className="d-flex mb-2">
-											{reduxSettings.showFastPayButtons &&
+											{reduxSettings?.showFastPayButtons &&
 												<>
 													<button className="btn btn-primary me-2"
 														tabIndex={-1}
@@ -3524,6 +3768,28 @@ function Tab({ tabId, activeTabId }) {
 				>
 				</Rightbar>
 			</div>
+			{/* Multikassa error Modal */}
+			
+			<Modal onClose={() => setShowModalIkpu(false)} show={showModalIkpu} >
+				<h2>{t('errors')}</h2>
+				<p>{formattedMessage}</p>
+				<button onClick={() => setShowModalIkpu(false)}>Close</button>
+			</Modal>
+
+			<Modal show={showModalIkpu} animation={false} centered
+				dialogClassName="payment-terminal-modal-width" onHide={() => setShowModalIkpu(false)}>
+				<Modal.Body>
+					<div className="modal-custom-close-button" onClick={() => setShowModalIkpu(false)}><CloseOutlined /></div>
+					<div className="payment-tab-body">
+						<h2>{t('errors')}</h2>
+						<p>{formattedMessage}</p>
+						<button onClick={() => setShowModalIkpu(false)}>Close</button>
+					</div>
+				</Modal.Body>
+			</Modal>
+			
+
+
 			{/* PAYMENT MODAL */}
 			<Modal show={showPaymentModal} animation={false} centered dialogClassName="payment-modal-width"
 				backdrop="static" onHide={() => handlePaymentModal(false, activeTab)}>
@@ -3543,7 +3809,7 @@ function Tab({ tabId, activeTabId }) {
 							{/* <li onClick={() => selectPaymentTab(5)}>
 								<span className={'text-uppercase ' + (activeTab === 5 ? 'active' : '')}>Tirox</span>
 							</li> */}
-							{reduxSettings.organizationDebtButton &&
+							{reduxSettings?.organizationDebtButton &&
 								<li onClick={() => selectPaymentTab(4)}>
 									<span className={'text-uppercase ' + (activeTab === 4 ? 'active' : '')}>{t('organization')}</span>
 								</li>
@@ -3576,9 +3842,7 @@ function Tab({ tabId, activeTabId }) {
 										}} />
 									<span className="input-inner-icon"
 										onClick={() => {
-											if (data.change < 0 || globalDisable.current) {
-												exactAmount('cash')
-											}
+											exactAmount('cash')
 										}}>
 										<img src={money} width={25} alt="money" />
 									</span>
@@ -3611,9 +3875,7 @@ function Tab({ tabId, activeTabId }) {
 										}} />
 									<span className="input-inner-icon"
 										onClick={() => {
-											if (data.change < 0 || globalDisable.current) {
-												exactAmount('terminal')
-											}
+											exactAmount('terminal')
 										}}>
 										<img src={creditCard} width={25} alt="credit-card" />
 									</span>
@@ -3664,7 +3926,7 @@ function Tab({ tabId, activeTabId }) {
 									</>
 								}
 
-								{reduxSettings.selectClientOnSale &&
+								{reduxSettings?.selectClientOnSale &&
 									<button className={`payment-tab-icon-wrapper mb-2 ${data.clientId ? 'active' : ''}`}
 										onClick={() => selectPaymentType('client')}>
 										{!data.clientId ?
@@ -3674,7 +3936,7 @@ function Tab({ tabId, activeTabId }) {
 										}
 									</button>
 								}
-								{reduxSettings.selectOrganizationOnSale &&
+								{reduxSettings?.selectOrganizationOnSale &&
 									<button className={`payment-tab-icon-wrapper mb-2 ${data.organizationId ? 'active' : ''}`}
 										onClick={() => selectPaymentType('organization')}>
 										{!data.organizationId ?
@@ -3684,7 +3946,7 @@ function Tab({ tabId, activeTabId }) {
 										}
 									</button>
 								}
-								{reduxSettings.selectAgentOnSale &&
+								{reduxSettings?.selectAgentOnSale &&
 									<button className={`payment-tab-icon-wrapper ${data.agentLogin ? 'active' : ''}`}
 										onClick={() => selectPaymentType('agent')}>
 										{!data.agentLogin ?
@@ -4624,7 +4886,7 @@ function Tab({ tabId, activeTabId }) {
 											</tr>
 										</thead>
 										<tbody>
-											{reduxSettings.postponeOnline ?
+											{reduxSettings?.postponeOnline ?
 												onlineChequeList.map((item, index) => (
 													<tr className={"cashbox-table-bg-on-hover cursor " + (item.selected ? 'cashbox-table-active' : '')}
 														key={index}
@@ -4728,7 +4990,7 @@ function Tab({ tabId, activeTabId }) {
 						</div>
 						<div className="d-flex gap-2 mt-3">
 							<button className="btn btn-danger"
-								onClick={() => reduxSettings.postponeOnline ? deleteCloudChequeDone() : deleteSavedChequeDone()}>
+								onClick={() => reduxSettings?.postponeOnline ? deleteCloudChequeDone() : deleteSavedChequeDone()}>
 								<CloseOutlined />
 							</button>
 							<button className="btn btn-primary w-100 text-uppercase"
@@ -4926,17 +5188,17 @@ function Tab({ tabId, activeTabId }) {
 					<div className="d-flex flex-column w-100">
 						<div className="d-flex justify-content-center mb-2">
 							<div className="d-flex">
-								{reduxSettings.logoPath ?
-									<img src={reduxSettings.logoPath}
-										width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-										height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+								{reduxSettings?.logoPath ?
+									<img src={reduxSettings?.logoPath}
+										width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+										height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 										alt="logo"
 									/>
 									:
 									<>
 										<img src={`${globalValue('url')}/logo.svg`}
-											width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-											height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+											width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+											height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 											alt="logo"
 										/>
 									</>
@@ -4948,22 +5210,22 @@ function Tab({ tabId, activeTabId }) {
 			</div>
 
 			<div className={`main d-none ${returnPrinterWidth()}`} ref={printChequeRef}>
-				{(!reduxSettings.ofd && !cashbox.ofd) &&
+				{(!reduxSettings?.ofd && !cashbox.ofd) &&
 					<div className="d-flex justify-content-center w-100 mt-3 mb-2">
 						<div className="d-flex flex-column w-100">
 							<div className="d-flex justify-content-center mb-2">
 								<div className="d-flex">
-									{reduxSettings.logoPath ?
-										<img src={reduxSettings.logoPath}
-											width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-											height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+									{reduxSettings?.logoPath ?
+										<img src={reduxSettings?.logoPath}
+											width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+											height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 											alt="logo"
 										/>
 										:
 										<>
 											<img src={`${globalValue('url')}/logo.svg`}
-												width={reduxSettings.chequeLogoWidth ? reduxSettings.chequeLogoWidth : 128}
-												height={reduxSettings.chequeLogoHeight ? reduxSettings.chequeLogoHeight : ''}
+												width={reduxSettings?.chequeLogoWidth ? reduxSettings?.chequeLogoWidth : 128}
+												height={reduxSettings?.chequeLogoHeight ? reduxSettings?.chequeLogoHeight : ''}
 												alt="logo"
 											/>
 										</>
@@ -4977,51 +5239,51 @@ function Tab({ tabId, activeTabId }) {
 					<span>{cashbox.posName}</span>
 				</h3>
 				<h5 className="text-center fw-600 mb-2">
-					<span>Telefon:</span>
+					<span>{t('phone')}:</span>
 					<span>{cashbox.posPhone}</span>
 				</h5>
 				<h5 className="text-center fw-500 mb-2">
-					<span>Manzil:</span>
+					<span>{t('address')}:</span>
 					<span>{cashbox.posAddress}</span>
 				</h5>
 				<div className="d-flex justify-content-between">
-					<p>STIR</p>
+					<p>{t('inn')}</p>
 					<p>{cashbox.tin}</p>
 				</div>
 				<div className="cheque-block-1 fz12">
 					{!!data.pinPad0 &&
 						<div className="d-flex justify-content-between">
-							<p>Terminal javob kodi</p>
+							<p>{t('terminal_response_code')}</p>
 							<p>{data.pinPad0}</p>
 						</div>
 					}
 					{!!data.pinPad1 &&
 						<div className="d-flex justify-content-between">
-							<p>Karta raqami</p>
+							<p>{t('card_number')}</p>
 							<p>{data.pinPad1}</p>
 						</div>
 					}
 					{!!data.pinPad2 &&
 						<div className="d-flex justify-content-between">
-							<p>Terminal ID</p>
+							<p>{t('terminal_id')}</p>
 							<p>{data.pinPad2}</p>
 						</div>
 					}
 					{!!data.pinPad3 &&
 						<div className="d-flex justify-content-between">
-							<p>Avtorizatsiya kodi</p>
+							<p>{t('auth_code')}</p>
 							<p>{data.pinPad3}</p>
 						</div>
 					}
 					{!!data.pinPad4 &&
 						<div className="d-flex justify-content-between">
-							<p>Karta turi</p>
+							<p>{t('card_type')}</p>
 							<p>{data.pinPad4}</p>
 						</div>
 					}
 					{!!data.pinPad7 &&
 						<div className="d-flex justify-content-between">
-							<p>Terminal chek raqami</p>
+							<p>{t('terminal_cheque_number')}</p>
 							<p>{data.pinPad7}</p>
 						</div>
 					}
@@ -5038,43 +5300,48 @@ function Tab({ tabId, activeTabId }) {
 						</div>
 					} */}
 					<div className="d-flex justify-content-between">
-						<p>Kassir</p>
+						<p>Chek raqami</p>
+						<p>{parseInt(localStorage.getItem("check_count")) + 1}</p>
+					</div>
+					<div className="d-flex justify-content-between">
+						<p>{t('card_type')}</p>
 						<p>{account.firstName + " " + account.lastName}</p>
 					</div>
 					{data.pinPadCardNumber &&
 						<div className="d-flex justify-content-between">
-							<p>Karta raqami</p>
+							<p>{t('cashier')}</p>
 							<p>{data.pinPadCardNumber}</p>
 						</div>
 					}
 					<div className="d-flex justify-content-between">
-						<p>ID chek</p>
+						<p>{t('cheque_id')}</p>
 						<p>{data.chequeNumber}</p>
 					</div>
 					{data?.fiscalResult?.ReceiptSeq &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">№ chek</p>
+							<p className="fw-600">{t('cheque_number')}</p>
 							<p>{data?.fiscalResult?.ReceiptSeq}</p>
 						</div>
 					}
+					
 					{data.chequeOfdType >= 0 &&
 						<div className="d-flex justify-content-between">
-							<p>Chek turi</p>
+							<p>{t('cheque_type')}</p>
 							<p>
 								{data.chequeOfdType === 0 &&
-									<span>Sotuv</span>
+									<span>{t('sales')}</span>
 								}
 								{data.chequeOfdType === 1 &&
-									<span>Avans</span>
+									<span>{t('avans')}</span>
 								}
 								{data.chequeOfdType === 2 &&
-									<span>Kredit</span>
+									<span>{t('credit')}</span>
 								}
 							</p>
 						</div>
 					}
 					<div className="d-flex justify-content-between">
-						<p>Sana</p>
+						<p>{t('date')}</p>
 						<p>
 							{data.dateFormat1 ?
 								<span>{data.dateFormat1}</span>
@@ -5091,8 +5358,8 @@ function Tab({ tabId, activeTabId }) {
 					<table className="custom-cheque-table w-100 fz12">
 						<thead>
 							<tr>
-								<th className="text-start w-50">Mahsulot</th>
-								<th className="text-end"></th>
+								<th className="text-start w-50">{t('product')}</th>
+								<th className="text-end">{t('price')}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -5110,7 +5377,7 @@ function Tab({ tabId, activeTabId }) {
 											<td colSpan={3}>
 												<div className="ms-2">
 													<div className="d-flex justify-content-between">
-														<div>Narxi</div>
+														<div>{t('price')}</div>
 														<div className="text-nowrap text-end">
 															{/* item.uomId === 7 */}
 															{false ?
@@ -5128,7 +5395,7 @@ function Tab({ tabId, activeTabId }) {
 														</div>
 													</div>
 													<div className="d-flex justify-content-between">
-														<div>O'lchov birligi</div>
+														<div>{t('uom')}</div>
 														<div className="text-end">
 															{item.packageCode ?
 																<span>{item.packageName ?? ''}</span>
@@ -5139,12 +5406,12 @@ function Tab({ tabId, activeTabId }) {
 													</div>
 													{!!item.discountAmount &&
 														<div className="d-flex justify-content-between">
-															<div>Chegirma</div>
+															<div>{t('discount')}</div>
 															<div>{item.discountAmount}</div>
 														</div>
 													}
 													<div className="d-flex justify-content-between">
-														<div>QQS ({formatMoney(item.vat)}%)</div>
+														<div>{t('vat')} ({formatMoney(item.vat)}%)</div>
 														<div>
 															{item.vat === 0 ?
 																<span>0</span>
@@ -5156,11 +5423,11 @@ function Tab({ tabId, activeTabId }) {
 													{item.gtin &&
 														<>
 															<div className="d-flex justify-content-between">
-																<div>Sh.k</div>
+																<div>{t('bar_code')}</div>
 																<div>{item.barcode}</div>
 															</div>
 															<div className="d-flex justify-content-between">
-																<div>MXIK</div>
+																<div>{t('gtin')}</div>
 																<div>{item.gtin}</div>
 															</div>
 														</>
@@ -5174,12 +5441,12 @@ function Tab({ tabId, activeTabId }) {
 													{item.organizationTin &&
 														<div className="d-flex justify-content-between">
 															<div>
-																Komitent
+																{t('komitent')}
 																{item.organizationTin.length === 9 &&
-																	<span>STIR</span>
+																	<span>{t('stir')}</span>
 																}
 																{item.organizationTin.length === 14 &&
-																	<span>JSHSHIR</span>
+																	<span>{t('PINFL')}</span>
 																}
 															</div>
 															<div>{item.organizationTin}</div>
@@ -5198,7 +5465,7 @@ function Tab({ tabId, activeTabId }) {
 				</div>
 				<div className="cheque-block-3 fz12 mb-2">
 					<div className="d-flex justify-content-between">
-						<p>Savdo summasi</p>
+						<p>{t('sale_amount')}</p>
 						{data.totalPrice ?
 							<p>{formatMoney(data.totalPrice)}</p>
 							:
@@ -5206,7 +5473,7 @@ function Tab({ tabId, activeTabId }) {
 						}
 					</div>
 					<div className="d-flex justify-content-between">
-						<p>QQS Jami</p>
+						<p>{t('vat_total')}</p>
 						{data.totalVatAmount > 0 ?
 							<p>{formatMoney(data.totalVatAmount)}</p>
 							:
@@ -5214,21 +5481,21 @@ function Tab({ tabId, activeTabId }) {
 						}
 					</div>
 					<div className="d-flex justify-content-between">
-						<p>Chegirma Jami</p>
+						<p>{t('total_discount')}</p>
 						<p>{formatMoney(data.discountAmount ? data.discountAmount : 0)}</p>
 					</div>
 					<div className="d-flex justify-content-between">
-						<p className={'fw-700 ' + (reduxSettings.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
-							To'lovga
+						<p className={'fw-700 ' + (reduxSettings?.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
+							{t('to_pay')}
 						</p>
 						{data.totalPrice &&
-							<p className={'fw-700 ' + (reduxSettings.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
+							<p className={'fw-700 ' + (reduxSettings?.checkPrintWidth === "80" ? 'fz20' : 'fz16')}>
 								<span>{formatMoney(Number(data.totalPrice) - Number(data.discountAmount ?? 0))}</span>
 							</p>
 						}
 					</div>
 					<div className="d-flex justify-content-between">
-						<p>To'landi</p>
+						<p>{t('paid')}</p>
 						{data.paid ?
 							<p>{formatMoney(data.paid)}</p>
 							:
@@ -5237,7 +5504,7 @@ function Tab({ tabId, activeTabId }) {
 					</div>
 					{data.saleCurrencyId &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Valyuta</p>
+							<p className="fw-600">{t('currency')}</p>
 							{data.saleCurrencyId === 1 &&
 								<p className="text-capitalize">So'm</p>
 							}
@@ -5250,10 +5517,10 @@ function Tab({ tabId, activeTabId }) {
 						data.transactionsList.map((item, index) => (
 							<div className="d-flex justify-content-between" key={index}>
 								{item.paymentTypeId === 1 &&
-									<p>Naqd</p>
+									<p>{t('cash')}</p>
 								}
 								{item.paymentTypeId === 2 &&
-									<p>Bank kartasi</p>
+									<p>{t('bank_card')}</p>
 								}
 								{item.paymentTypeId === 4 &&
 									<p>uGet</p>
@@ -5284,7 +5551,7 @@ function Tab({ tabId, activeTabId }) {
 						</div>
 					}
 					<div className="d-flex justify-content-between">
-						<p>Qaytim</p>
+						<p>{t('refund')}</p>
 						{data.change ?
 							<p>{formatMoney(data.change)}</p>
 							:
@@ -5293,7 +5560,7 @@ function Tab({ tabId, activeTabId }) {
 					</div>
 					{data.clientBalance &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qarz bo'lgan</p>
+							<p className="fw-600">{t('debt_was')}</p>
 							{(data.clientBalance && data.clientAmount) &&
 								<p>
 									{formatMoney(Number(data.clientAmount) + Number(data.clientBalance))}
@@ -5303,7 +5570,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{Number(data.clientAmount) > 0 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qarz miqdori</p>
+							<p className="fw-600">{t('debt_amount')}</p>
 							{data.clientAmount &&
 								<p>{formatMoney(data.clientAmount)}</p>
 							}
@@ -5311,7 +5578,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{data.clientBalance &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Jami qarz</p>
+							<p className="fw-600">{t('debt_total')}</p>
 							{data.clientBalance &&
 								<p>{formatMoney(data.clientBalance)}</p>
 							}
@@ -5319,25 +5586,25 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{data.clientPhone1 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Mijoz raqami</p>
+							<p className="fw-600">{t('client_number')}</p>
 							<p>{data.clientPhone1}</p>
 						</div>
 					}
 					{data.clientPhone2 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Mijoz raqami</p>
+							<p className="fw-600">{t('client_number')}</p>
 							<p>{data.clientPhone2}</p>
 						</div>
 					}
 					{data.clientAddress &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Manzil</p>
+							<p className="fw-600">{t('address')}</p>
 							<p className="text-end">{data.clientAddress}</p>
 						</div>
 					}
 					{Number(data.clientAmount) > 0 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qarzdor</p>
+							<p className="fw-600">{t('debtor')}</p>
 							{data.clientName &&
 								<p>{data.clientName}</p>
 							}
@@ -5345,7 +5612,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{(Number(data.clientAmount) === 0 && data.clientName) &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Mijoz</p>
+							<p className="fw-600">{t('client')}</p>
 							{data.clientName &&
 								<p>{data.clientName}</p>
 							}
@@ -5353,7 +5620,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{Number(data.organizationAmount) > 0 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qarz miqdori</p>
+							<p className="fw-600">{t('debt_amount')}</p>
 							{data.organizationAmount &&
 								<p>{formatMoney(data.organizationAmount)}</p>
 							}
@@ -5361,7 +5628,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{Number(data.organizationAmount) > 0 &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qarzdor</p>
+							<p className="fw-600">{t('debtor')}</p>
 							{data.organizationName &&
 								<p>{data.organizationName}</p>
 							}
@@ -5369,7 +5636,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{(Number(data.organizationAmount) === 0 && data.organizationName) &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Taminotchi</p>
+							<p className="fw-600">{t('organization')}</p>
 							{data.organizationName &&
 								<p>{data.organizationName}</p>
 							}
@@ -5377,7 +5644,7 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{!!data.agentName &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Agent</p>
+							<p className="fw-600">{t('agent')}</p>
 							{data.agentName &&
 								<p>{data.agentName}</p>
 							}
@@ -5385,18 +5652,18 @@ function Tab({ tabId, activeTabId }) {
 					}
 					{!!data.clientReturnDate &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qaytarish kuni</p>
+							<p className="fw-600">{t('return_date')}</p>
 							<p>{formatDateWithTime(data.clientReturnDate, 'dd.MM.yyyy')}</p>
 						</div>
 					}
 					{!!data.organizationReturnDate &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">Qaytarish kuni</p>
+							<p className="fw-600">{t('return_date')}</p>
 							<p>{formatDateWithTime(data.organizationReturnDate, 'dd.MM.yyyy')}</p>
 						</div>
 					}
 					{/* FISCAL INFO */}
-					<div className="d-flex justify-content-between">
+					{/* <div className="d-flex justify-content-between">
 						<p className="fw-600">Serial raqam</p>
 						<p>20220778</p>
 					</div>
@@ -5405,27 +5672,33 @@ function Tab({ tabId, activeTabId }) {
 							<p className="fw-600">Virtual kassa</p>
 							<p>{globalValue('projectName')}</p>
 						</div>
-					}
+					} */}
 					{data?.fiscalResult?.TerminalID &&
-						<div className="d-flex justify-content-between">
-							<p className="fw-600">Fiskal raqam</p>
-							<p>{data?.fiscalResult?.TerminalID}</p>
-						</div>
+						<>
+							<div className="overflow-hidden">
+								****************************************************************************************************
+							</div>
+							<div className="d-flex justify-content-between">
+								<p className="fw-600">{t('fiscal_module')}</p>
+								<p>{data?.fiscalResult?.TerminalID}</p>
+							</div>
+						</>
 					}
 					{data?.fiscalResult?.FiscalSign &&
 						<div className="d-flex justify-content-between">
-							<p className="fw-600">№ Fiskal belgi</p>
+							<p className="fw-600">{t('fiscal_sign_number')}</p>
 							<p>{data?.fiscalResult?.FiscalSign}</p>
 						</div>
 					}
 					{/* FISCAL INFO */}
 				</div>
-				{(data?.fiscalResult?.QRCodeURL && reduxSettings.showQrCode) &&
+				{(data?.fiscalResult?.QRCodeURL && reduxSettings?.showQrCode) &&
 					<div className="d-flex justify-content-center">
+						<br></br>
 						<QRCode value={data?.fiscalResult?.QRCodeURL} size={160} />
 					</div>
 				}
-				{(data.chequeNumber && reduxSettings.showBarcode) &&
+				{(data.chequeNumber && reduxSettings?.showBarcode) &&
 					<div className="d-flex justify-content-center">
 						<Barcode value={data.chequeNumber} width={2} height={30} displayValue={false} background="transparent" />
 					</div>
@@ -5433,14 +5706,14 @@ function Tab({ tabId, activeTabId }) {
 				<div className="overflow-hidden">
 					****************************************************************************************************
 				</div>
-				{!reduxSettings.additionalInformation &&
+				{!reduxSettings?.additionalInformation &&
 					<div className="d-flex justify-content-center mb-2">
-						<p>Xaridingiz uchun tashakkur!</p>
+						<p>{t('thanks_letter')}</p>
 					</div>
 				}
-				{reduxSettings.additionalInformation &&
+				{reduxSettings?.additionalInformation &&
 					<div className="d-flex justify-content-center">
-						<p>{reduxSettings.additionalInformationText}!</p>
+						<p>{reduxSettings?.additionalInformationText}!</p>
 					</div>
 				}
 			</div>

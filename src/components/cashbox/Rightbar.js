@@ -158,21 +158,21 @@ function Rightbar({
 						<KeyboardOutlined className={(listView === 3 ? 'rightbar-icon-active' : '')}
 							onClick={() => toggleRigthBar(3)} />
 					</div>
-					{reduxSettings.chequeCopy &&
+					{reduxSettings?.chequeCopy &&
 						<div className="righbar-closed-icon mb-3 py-1"
 							onClick={() => printChequeCopy()}
 							title={t('cheque_copy')}>
 							<FileCopyOutlined />
 						</div>
 					}
-					{reduxSettings.chequeCopyExcel &&
+					{reduxSettings?.chequeCopyExcel &&
 						<div className="righbar-closed-icon mb-3 py-1"
 							onClick={() => chequeCopyExcel()}
 							title={t('cheque_excel')}>
 							<FileCopy />
 						</div>
 					}
-					{reduxSettings.postponeOnline &&
+					{reduxSettings?.postponeOnline &&
 						<>
 							<div className="righbar-closed-icon py-1" onClick={() => addChequeToSaved('online')}>
 								<CreateNewFolderOutlined />
@@ -182,7 +182,7 @@ function Rightbar({
 							</div>
 						</>
 					}
-					{reduxSettings.postponeOffline &&
+					{reduxSettings?.postponeOffline &&
 						<>
 							<div className="righbar-closed-icon py-1" onClick={() => addChequeToSaved('offline')}>
 								<CreateNewFolderOutlined />
