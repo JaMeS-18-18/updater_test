@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { useHistory } from "react-router-dom";
 import { POST, GET, globalValue } from 'api/api'
 import {
-	CloseOutlined, RemoveOutlined, StopOutlined, AddOutlined,
+  CloseOutlined, RemoveOutlined, StopOutlined, AddOutlined,
   LockOpenOutlined, CachedOutlined, TimelineOutlined, CreditCardOutlined, MonetizationOnOutlined,
   WifiOutlined, WifiLockOutlined, AccountBoxOutlined, PhoneOutlined, ChatBubbleOutline, ComputerOutlined,
   Money,
@@ -29,605 +29,631 @@ import creditCard from 'assets/icons/credit-card.svg'
 import { O_POST } from 'api/apiOfd';
 
 function Titlebar() {
-	const { t } = useTranslation();
-	const dispatch = useDispatch()
-	const history = useHistory();
-
-	const contactSearchRef = useRef(null);
-	const printChequeRef = useRef(null);
-	const printDebtorChequeRef = useRef(null);
-
-	const cashbox = useSelector(state => state.cashbox)
-	const shift = useSelector(state => state.shift)
-	const account = useSelector(state => state.account)
-	const reduxSettings = useSelector(state => state.settings?.settings)
-	const internetConnection = useSelector(state => state.settings.internetConnection)
-	const lockScreen = useSelector(state => state.settings.lockScreen)
-
-	const [data, setData] = useState({});
-	const [expenses, setExpenses] = useState([]);
-	const [reportType, setReportType] = useState(true);
-	const [debtorChequeData, setDebtorChequeData] = useState({ 'date': '', 'name': '', 'payed': 0, 'debt': 0 })
-	const [debtors, setDebtors] = useState([])
-	const [oldDebtors, setOldDebtors] = useState([])
-	const [client, setClient] = useState({ "name": "", "phone1": "", "phone2": "", "comment": "" })
-	const [debtorOut, setDebtorOut] = useState({
-		"amountOut": "", "cashboxId": cashbox.cashboxId, "currencyId": cashbox.defaultCurrency,
-		"note": "", "expenseId": 1, "posId": cashbox.posId, "shiftId": cashbox.id ? cashbox.id : shift.id
-	})
-
-	const [showXReportModal, setShowXReportModal] = useState(false);
-	const [showDebtorsModal, setShowDebtorsModal] = useState(false);
-	const [showExpensesModal, setShowExpensesModal] = useState(false);
-	const [OpenCashModal, setOpenCashModal] = useState(false);
-	const [OpenNotifModal, setOpenNotifModal] = useState(false);
-	const [CashAmount, setCashAmount] = useState(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '');
-	const [RecievedMoney, setRecievedMoney] = useState('');
-	const [RecievedMoneyStatus, setRecievedMoneyStatus] = useState(false);
-	const [showAddClientModal, setShowAddClientModal] = useState(false);
-	const [showConfirmShiftCloseModal, setShowConfirmShiftCloseModal] = useState(false);
-
-	const [contactSearchInput, setContactSearchInput] = useState("");
-
-	const [debtorNote, setDebtorNote] = useState("");
-	const [transactionsListCash, setTransactionsListCash] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 1, "paymentPurposeId": 1 });
-	const [transactionsListTerminal, setTransactionsListTerminal] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 2, "paymentPurposeId": 1 });
-	const [rotation, setRotation] = useState(0);
-	const notificationSound = new Audio('/notif.mp3'); // Ovoz faylini chaqirish
-
-	function windowMinimize() {
-		window.electron.appApi.windowMinimize()
-	}
-
-	function windowMaximize() {
-		window.electron.appApi.windowMaximize()
-	}
-
-	function windowClose() {
-		if (window.navigator.onLine && internetConnection) {
-			window.electron.dbApi.getUnsyncCheques().then(response => {
-				if (response.length > 0) {
-					for (let i = 0; i < response.length; i++) {
-						response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
-						response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
-						response[i]['cashierLogin'] = response[i]['login']
-					}
-
-					POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
-						window.electron.dbApi.updateChequesListStatus(response2.transactionList)
-						window.electron.appApi.windowClose()
-					}).catch(e => {
-						window.electron.appApi.windowClose()
-					})
-
-				} else {
-					window.electron.appApi.windowClose()
-				}
-			})
-		} else {
-			window.electron.appApi.windowClose()
-		}
-		// Before was only this line below
-		//window.electron.appApi.windowClose()
-	}
-
-	function getCurrentDateTime() {
-		const now = new Date();
-		const year = now.getFullYear();
-		const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-		const day = String(now.getDate()).padStart(2, '0');
-		const hours = String(now.getHours()).padStart(2, '0');
-		const minutes = String(now.getMinutes()).padStart(2, '0');
-		const seconds = String(now.getSeconds()).padStart(2, '0');
-
-		return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-	}
-
-	async function closeMultikassaSession() {
-
-		const url = "http://localhost:8080/api/v1/operations";
-
-		const requestBody = {
-			"module_operation_type": "2",
-			"receipt_gnk_time": getCurrentDateTime()
-		};
-
-		try {
-			const response = await fetch(url, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(requestBody),
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			}
-
-			const result = await response.json(); // Parse response to JSON
-			toast.success(t('success_ofd_close_session'))
-		} catch (error) {
-			toast.error(t('fail_ofd_close_session'))
-		}
-
-	}
-
-	async function closeShift(e) {
-		setReportType(false)
-		e.preventDefault()
-		var sendData = {}
-		sendData.actionDate = getUnixTime()
-		sendData.cashboxId = cashbox.cashboxId
-		if (shift.id) {
-			sendData.id = shift.id
-		} else {
-			sendData.id = cashbox.id
-		}
-
-		sendData.offline = false
-		sendData.posId = cashbox.posId
-
-		var shiftId = cashbox.id ? cashbox.id : shift.id
-
-		// SYNC CHEQUES THEN CLOSE SHIFT
-		if (window.navigator.onLine && internetConnection) {
-			window.electron.dbApi.getUnsyncDeletedProducts().then(response => {
-				if (response.length > 0) {
-					POST("/services/desktop/api/cheque-deleted-list", response, false, false).then(() => {
-						window.electron.dbApi.updateDeletedProductsStatus(response)
-					})
-				}
-			})
-
-			var responseDate = {}
-			try {
-				if (window.navigator.onLine) {
-					responseDate = await GET("/services/desktop/api/date-helper")
-				}
-			} catch (error) {
-				console.log('here')
-			}
-			responseDate.ofdDate = responseDate?.ofdDate ? responseDate?.ofdDate : todayYYYYMMDD()
-			var responseOfd;
-			if (reduxSettings?.ofd) {
-				responseOfd = await O_POST({
-					"method": "Api.CloseZReport",
-					"id": '',
-					"params": {
-						"FactoryID": reduxSettings?.ofdFactoryId,
-						"Time": responseDate.ofdDate,
-					},
-					"jsonrpc": "2.0"
-				})
-			}
-
-			const multikassaOfd = localStorage.getItem('multikassaOfd') === 'true'
-
-			if (multikassaOfd) {
-				closeMultikassaSession()
-			}
-
-			window.electron.dbApi.getUnsyncCheques().then(response => {
-				if (response.length > 0) {
-					for (let i = 0; i < response.length; i++) {
-						response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
-						response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
-						response[i]['cashierLogin'] = response[i]['login']
-					}
-
-					POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
-						window.electron.dbApi.updateChequesListStatus(response2.transactionList).then(() => {
-							GET("/services/desktop/api/shift-xreport/" + shiftId).then(xReportResponse => {
-								setData(xReportResponse)
-								if (!reduxSettings?.printerBroken) {
-									var domInString = printChequeRef.current.outerHTML
-									window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
-								}
-
-								POST("/services/desktop/api/close-shift", sendData, true).then(() => {
-									clearTemporaryStorage()
-									dispatch({ type: 'USER_LOGGED_OUT', payload: null })
-									history.push("/auth/login")
-								});
-							})
-						})
-					}).catch(e => {
-						toast.error(t('synchronization_error'))
-					})
-				} else {
-					GET("/services/desktop/api/shift-xreport/" + shiftId).then(response => {
-						response.AppletVersion = responseOfd?.result?.AppletVersion
-						response.UnsentZReportsCount = responseOfd?.result?.UnsentZReportsCount
-						response.ErrorsCount = responseOfd?.result?.ErrorsCount
-						response.AwaitingToSendZReportsCount = responseOfd?.result?.AwaitingToSendZReportsCount
-						setData(response)
-						//if (!reduxSettings?.printerBroken) {
-						var domInString = printChequeRef.current.outerHTML
-						window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
-						//}
-
-						POST("/services/desktop/api/close-shift", sendData, true).then(() => {
-							clearTemporaryStorage()
-							dispatch({ type: 'USER_LOGGED_OUT', payload: null })
-							history.push("/auth/login")
-						}).catch(err => {
-							clearTemporaryStorage()
-							dispatch({ type: 'USER_LOGGED_OUT', payload: null })
-							history.push("/auth/login")
-						});
-					})
-				}
-			})
-		} else {
-			toast.error(t('no_internet_connection'))
-		}
-		// SYNC CHEQUES THEN CLOSE SHIFT
-
-		return;
-	}
-
-	function toggleInternetListener() {
-		var condition = navigator.onLine ? "online" : "offline";
-		if (condition === "online" && internetConnection !== 2) {
-			dispatch(SET_INTERNET(1))
-		}
-		if (condition === "offline" && internetConnection !== 2) {
-			dispatch(SET_INTERNET(0))
-		}
-	}
-
-	function toggleInternet(boolean) {
-		var condition = navigator.onLine ? "online" : "offline";
-		if (boolean === 1 && condition === "online")
-			dispatch(SET_INTERNET(1))
-		if (boolean === 1 && condition === "offline")
-			dispatch(SET_INTERNET(0))
-		if (boolean === 2)
-			dispatch(SET_INTERNET(2))
-	}
-
-	function getXReport() {
-		setReportType(true)
-		var shiftId = cashbox.id ? cashbox.id : shift.id
-		GET("/services/desktop/api/shift-xreport/" + shiftId).then(response => {
-			setData(response)
-			if (reduxSettings?.xReport) {
-				setShowXReportModal(true)
-			} else {
-				if (!reduxSettings?.printerBroken) {
-					var domInString = printChequeRef.current.outerHTML
-					window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
-				}
-			}
-		})
-	}
-
-	function openRemoteAccess(type) {
-		window.electron.appApi.openRemoteAccess(type)
-	}
-
-	/* ВЗАИМО РАСЧЕТ */
-	function getDebtorsShowModal() {
-		GET("/services/desktop/api/client-debt-list/" + cashbox.posId).then(response => {
-			for (let i = 0; i < response.length; i++) {
-				response.selected = false
-			}
-			setDebtors(response)
-			setOldDebtors(response)
-			setShowDebtorsModal(true)
-			setTimeout(() => {
-				contactSearchRef.current.select()
-			}, 100);
-		})
-	}
-
-	function closeDebtorsModal() {
-		setShowDebtorsModal(false)
-		setContactSearchInput("")
-		setTransactionsListCash({ ...transactionsListCash, "amountIn": "" })
-		setTransactionsListTerminal({ ...transactionsListTerminal, "amountIn": "" })
-		setDebtorNote("")
-	}
-
-	function closeKassaModal() {
-		setOpenCashModal(false)
-		setRecievedMoneyStatus(false);
-	}
-
-	function closeNotificationModal() {
-		setOpenNotifModal(false)
-	}
-
-
-	function searchDebtor(search) {
-		if (search.length === 0) {
-			setDebtors(oldDebtors)
-		} else {
-			setContactSearchInput(search)
-			var debtorsCopy = [...oldDebtors]
-			var arr = []
-			for (let i = 0; i < debtorsCopy.length; i++) {
-				if (debtorsCopy[i]['clientName'].toLowerCase().includes(search.toLowerCase())) {
-					arr.push(debtorsCopy[i])
-				}
-			}
-			setDebtors(arr)
-		}
-	}
-
-	function selectDebtorClient(clientId, currencyId) {
-		var debtorsCopy = [...debtors]
-		for (let i = 0; i < debtorsCopy.length; i++) {
-			if (debtorsCopy[i]['clientId'] === clientId && debtorsCopy[i]['currencyId'] === currencyId) {
-				debtorsCopy[i]['selected'] = true
-			} else {
-				debtorsCopy[i]['selected'] = false
-			}
-		}
-		setDebtors(debtorsCopy)
-	}
-
-	function createClientDebt() {
-		var debtorsCopy = [...debtors]
-		var sendData = {
-			"amountIn": 0,
-			"amountOut": 0,
-			"cashboxId": cashbox.cashboxId,
-			"clientId": 0,
-			"currencyId": 0,
-			"posId": cashbox.posId,
-			"shiftId": cashbox.id ? cashbox.id : shift.id,
-			"transactionsList": []
-		}
-
-		for (let i = 0; i < debtorsCopy.length; i++) {
-			if (debtorsCopy[i]['selected']) {
-				sendData.clientId = debtorsCopy[i]['clientId']
-				sendData.clientName = debtorsCopy[i]['clientName']
-				sendData.balance = debtorsCopy[i]['balance']
-				sendData.currencyId = debtorsCopy[i]['currencyId']
-				sendData.currencyName = debtorsCopy[i]['currencyName']
-				sendData.note = debtorNote
-			}
-		}
-
-		if (sendData.clientId === 0) {
-			toast.error(t('debtor_not_selected'))
-			return;
-		}
-
-		if (transactionsListCash.amountIn || transactionsListTerminal.amountIn) {
-			transactionsListCash.paymentPurposeId = 5
-			sendData.amountIn += Number(transactionsListCash.amountIn)
-			if (Number(transactionsListCash.amountIn) > 0 || Number(transactionsListCash.amountOut) > 0) {
-				sendData.transactionsList.push(transactionsListCash)
-			}
-		}
-
-		if (transactionsListTerminal.amountIn || transactionsListTerminal.amountIn) {
-			transactionsListTerminal.paymentPurposeId = 5
-			sendData.amountIn += Number(transactionsListTerminal.amountIn)
-			if (Number(transactionsListTerminal.amountIn) > 0 || Number(transactionsListTerminal.amountOut) > 0) {
-				sendData.transactionsList.push(transactionsListTerminal)
-			}
-		}
-
-		setDebtorChequeData({
-			'date': todayDate(),
-			'name': sendData.clientName,
-			'payed': sendData.amountIn,
-			'currencyName': sendData.currencyName,
-			'balance': sendData.balance + sendData.amountIn
-		})
-
-		POST("/services/desktop/api/client-debt-in", sendData).then(() => {
-			setTransactionsListCash({ ...transactionsListCash, 'amountIn': "" })
-			setTransactionsListTerminal({ ...transactionsListTerminal, 'amountIn': "" })
-			setDebtorNote('')
-
-			if (!reduxSettings?.printerBroken) {
-				var domInString = printDebtorChequeRef.current.outerHTML;
-				window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter);
-				setTimeout(() => {
-					window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter);
-				}, 500);
-			}
-
-			toast.success(t('success'))
-
-			GET("/services/desktop/api/client-debt-list/" + cashbox.posId).then(response => {
-				for (let i = 0; i < response.length; i++) {
-					response.selected = false
-				}
-				setDebtors(response)
-				setOldDebtors(response)
-			})
-		})
-	}
-	/* ВЗАИМО РАСЧЕТ */
-
-	/* РАСХОДЫ */
-	function createClient() {
-		POST("/services/desktop/api/clients", client).then(() => {
-			setClient({ "name": "", "phone1": "", "phone2": "", "comment": "" })
-			setShowAddClientModal(false)
-		})
-	}
-
-	function closeExpensesModal() {
-		setShowExpensesModal(false)
-		setDebtorOut({ ...debtorOut, "amountOut": "" })
-	}
-
-	function createDebtorOut(e) {
-		e.preventDefault();
-		POST("/services/desktop/api/expense-out", debtorOut).then(() => {
-			setDebtorOut({ ...debtorOut, "expenseId": "", "amountOut": "", "note": "" })
-			setShowExpensesModal(false)
-		});
-	}
-
-	function createCashMoney(e) {
-		e.preventDefault();
-		console.log(CashAmount);
-		localStorage.setItem('cashAmount', CashAmount);
-		setRecievedMoneyStatus(false);
-		setOpenCashModal(false)
-	}
-
-
-	function toggleExpenseModal(bool = false) {
-		if (bool) {
-			GET("/services/desktop/api/expense-helper").then(response => {
-				setExpenses(response)
-				var expenseId = 0
-				if (response.length > 0) expenseId = response[0]['id']
-				setDebtorOut({ ...debtorOut, "expenseId": expenseId, "amountOut": "", "note": "" })
-				setShowExpensesModal(true)
-			});
-		} else {
-			setShowExpensesModal(false)
-		}
-	}
-	/* РАСХОДЫ */
-
-	function setLockScreen() {
-		dispatch(SET_LOCK_SCREEN())
-	}
-
-	function syncCheques() {
-		if (window.navigator.onLine && internetConnection) {
-			window.electron.dbApi.getUnsyncCheques().then(response => {
-
-				if (response.length > 0) {
-					for (let i = 0; i < response.length; i++) {
-						response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
-						response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
-						response[i]['cashierLogin'] = response[i]['login']
-					}
-
-					POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
-						window.electron.dbApi.updateChequesListStatus(response2.transactionList).then(() => {
-							window.electron.dbApi.getUnsyncCheques().then(response4 => {
-								dispatch(SET_UNSYNC_PRODUCTS(response4.length))
-								toast.success(t('synchronized'))
-
-								GET("/services/desktop/api/get-balance-product-list/" + cashbox.posId + "/" + cashbox.defaultCurrency).then(response => {
-									window.electron.dbApi.deleteProducts()
-									window.electron.dbApi.insertProducts(response).catch(e => { toast.error(e) })
-									dispatch(SET_PRODUCTS_FROM_DB(Math.floor(Math.random() * 999999)))
-									setTimeout(() => {
-										toast.info(t('all_products_synchronized'))
-									}, 1000);
-								})
-							})
-						})
-					}).catch(e => {
-						toast.error(t('synchronization_error'))
-					})
-				} else {
-					GET("/services/desktop/api/get-balance-product-list/" + cashbox.posId + "/" + cashbox.defaultCurrency).then(response => {
-						window.electron.dbApi.deleteProducts()
-						window.electron.dbApi.insertProducts(response).catch(e => { toast.error(e) })
-						dispatch(SET_PRODUCTS_FROM_DB(Math.floor(Math.random() * 999999)))
-						toast.info(t('all_products_synchronized'))
-					})
-				}
-			})
-		} else {
-			toast.error(t('no_internet_connection'))
-		}
-	}
-
-	useEffect(() => {
-		window.addEventListener('online', toggleInternetListener)
-		window.addEventListener('offline', toggleInternetListener)
-
-		return () => {
-			window.removeEventListener('online', toggleInternetListener)
-			window.removeEventListener('offline', toggleInternetListener)
-		}
-	}, []);// eslint-disable-line react-hooks/exhaustive-deps
-
-	const [notifications, setNotifications] = useState([
-		{
-			id: 1,
-			show: true,
-			title: "Oddiy Bildirishnoma",
-			subtitle: "Bu oddiy bildirishnoma.",
-			importance: "low",
-			details: "Bu oddiy bildirishnoma bo'lib, faqat umumiy xabarnoma sifatida ko'rinadi.",
-		},
-		{
-			id: 2,
-			show: false,
-			title: "Muhim Bildirishnoma",
-			subtitle: "Bu muhim bildirishnoma.",
-			importance: "medium",
-			details: "Bu muhim bildirishnoma bo'lib, siz e'tibor berishingiz kerak.",
-		},
-		{
-			id: 3,
-			show: false,
-			title: "Juda Muhim Bildirishnoma",
-			subtitle: "Bu juda muhim bildirishnoma!",
-			importance: "high",
-			details: "Bu juda muhim bildirishnoma! Tezda ko'rib chiqing!",
-		},
-	]);
-
-	const handleToggle = (id) => {
-		setNotifications(
-			notifications.map((item) =>
-				item.id === id ? { ...item, show: !item.show } : { ...item, show: false }
-			)
-		);
-	};
-
-	const getImportanceClass = (importance) => {
-		switch (importance) {
-			case "low":
-				return "bg-light text-dark"; // Yengil bildirishnoma
-			case "medium":
-				return "bg-warning text-dark"; // Sariq muhim bildirishnoma
-			case "high":
-				return "bg-danger text-white"; // Qizil juda muhim bildirishnoma
-			default:
-				return "";
-		}
-	};
-
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [readNotifications, setReadNotifications] = useState([]);
-
-	useEffect(() => {
-		notificationSound.play();
-		const interval = setInterval(() => {
-			setRotation(20);
-			setTimeout(() => setRotation(-20), 100);
-			setTimeout(() => setRotation(0), 200);
-		}, 3000);
-
-		return () => clearInterval(interval);
-	}, []);
-
-	useEffect(() => {
-		//APIGA SO'ROV YUBORISH UCHUN HAR BELGILANGAN VAQT ORALIGIDA BORADI KELGAN OZGARISHNI LOCALGA SAQLAYDI 
-		// AGAR LOCALDAGILAR BILAN APIDAN KELGAN LENGTH BIRXIL BOLMASA NOTIFICATION SOUND CHAQIRILADI 👇
-		// notificationSound.play();
-	}, [])
-
-	const handleNotificationClick = (id) => {
-		if (!readNotifications.includes(id)) {
-			setReadNotifications([...readNotifications, id]);
-		}
-	};
-
-	return (
-    <div id="drag-region" className="titlebar d-flex justify-content-between">
-      <div className="h-100 ms-2">
-        <div className="d-flex h-100">
+  const { t } = useTranslation();
+  const dispatch = useDispatch()
+  const history = useHistory();
+
+  const contactSearchRef = useRef(null);
+  const printChequeRef = useRef(null);
+  const printDebtorChequeRef = useRef(null);
+
+  const cashbox = useSelector(state => state.cashbox)
+  const shift = useSelector(state => state.shift)
+  const account = useSelector(state => state.account)
+  const reduxSettings = useSelector(state => state.settings?.settings)
+  const internetConnection = useSelector(state => state.settings.internetConnection)
+  const lockScreen = useSelector(state => state.settings.lockScreen)
+
+  const [data, setData] = useState({});
+  const [expenses, setExpenses] = useState([]);
+  const [reportType, setReportType] = useState(true);
+  const [debtorChequeData, setDebtorChequeData] = useState({ 'date': '', 'name': '', 'payed': 0, 'debt': 0 })
+  const [debtors, setDebtors] = useState([])
+  const [oldDebtors, setOldDebtors] = useState([])
+  const [client, setClient] = useState({ "name": "", "phone1": "", "phone2": "", "comment": "" })
+  const [debtorOut, setDebtorOut] = useState({
+    "amountOut": "", "cashboxId": cashbox.cashboxId, "currencyId": cashbox.defaultCurrency,
+    "note": "", "expenseId": 1, "posId": cashbox.posId, "shiftId": cashbox.id ? cashbox.id : shift.id
+  })
+
+  const [showXReportModal, setShowXReportModal] = useState(false);
+  const [showDebtorsModal, setShowDebtorsModal] = useState(false);
+  const [showExpensesModal, setShowExpensesModal] = useState(false);
+  const [OpenCashModal, setOpenCashModal] = useState(false);
+  const [OpenNotifModal, setOpenNotifModal] = useState(false);
+  const [CashAmount, setCashAmount] = useState(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '');
+  const [RecievedMoney, setRecievedMoney] = useState('');
+  const [RecievedMoneyStatus, setRecievedMoneyStatus] = useState(false);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [showConfirmShiftCloseModal, setShowConfirmShiftCloseModal] = useState(false);
+
+  const [contactSearchInput, setContactSearchInput] = useState("");
+
+  const [debtorNote, setDebtorNote] = useState("");
+  const [transactionsListCash, setTransactionsListCash] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 1, "paymentPurposeId": 1 });
+  const [transactionsListTerminal, setTransactionsListTerminal] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 2, "paymentPurposeId": 1 });
+  const [rotation, setRotation] = useState(0);
+  const notificationSound = new Audio('/notif.mp3'); // Ovoz faylini chaqirish
+
+  function windowMinimize() {
+    window.electron.appApi.windowMinimize()
+  }
+
+  function windowMaximize() {
+    window.electron.appApi.windowMaximize()
+  }
+
+  function windowClose() {
+    if (window.navigator.onLine && internetConnection) {
+      window.electron.dbApi.getUnsyncCheques().then(response => {
+        if (response.length > 0) {
+          for (let i = 0; i < response.length; i++) {
+            response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
+            response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
+            response[i]['cashierLogin'] = response[i]['login']
+          }
+
+          POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
+            window.electron.dbApi.updateChequesListStatus(response2.transactionList)
+            window.electron.appApi.windowClose()
+          }).catch(e => {
+            window.electron.appApi.windowClose()
+          })
+
+        } else {
+          window.electron.appApi.windowClose()
+        }
+      })
+    } else {
+      window.electron.appApi.windowClose()
+    }
+    // Before was only this line below
+    //window.electron.appApi.windowClose()
+  }
+
+  function getCurrentDateTime() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  }
+
+  async function closeMultikassaSession() {
+
+    const url = "http://localhost:8080/api/v1/operations";
+
+    const requestBody = {
+      "module_operation_type": "2",
+      "receipt_gnk_time": getCurrentDateTime()
+    };
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json(); // Parse response to JSON
+      toast.success(t('success_ofd_close_session'))
+    } catch (error) {
+      toast.error(t('fail_ofd_close_session'))
+    }
+
+  }
+
+  async function closeShift(e) {
+    setReportType(false)
+    e.preventDefault()
+    var sendData = {}
+    sendData.actionDate = getUnixTime()
+    sendData.cashboxId = cashbox.cashboxId
+    if (shift.id) {
+      sendData.id = shift.id
+    } else {
+      sendData.id = cashbox.id
+    }
+
+    sendData.offline = false
+    sendData.posId = cashbox.posId
+
+    var shiftId = cashbox.id ? cashbox.id : shift.id
+
+    // SYNC CHEQUES THEN CLOSE SHIFT
+    if (window.navigator.onLine && internetConnection) {
+      window.electron.dbApi.getUnsyncDeletedProducts().then(response => {
+        if (response.length > 0) {
+          POST("/services/desktop/api/cheque-deleted-list", response, false, false).then(() => {
+            window.electron.dbApi.updateDeletedProductsStatus(response)
+          })
+        }
+      })
+
+      var responseDate = {}
+      try {
+        if (window.navigator.onLine) {
+          responseDate = await GET("/services/desktop/api/date-helper")
+        }
+      } catch (error) {
+        console.log('here')
+      }
+      responseDate.ofdDate = responseDate?.ofdDate ? responseDate?.ofdDate : todayYYYYMMDD()
+      var responseOfd;
+      if (reduxSettings?.ofd) {
+        responseOfd = await O_POST({
+          "method": "Api.CloseZReport",
+          "id": '',
+          "params": {
+            "FactoryID": reduxSettings?.ofdFactoryId,
+            "Time": responseDate.ofdDate,
+          },
+          "jsonrpc": "2.0"
+        })
+      }
+
+      const multikassaOfd = localStorage.getItem('multikassaOfd') === 'true'
+
+      if (multikassaOfd) {
+        closeMultikassaSession()
+      }
+
+      window.electron.dbApi.getUnsyncCheques().then(response => {
+        if (response.length > 0) {
+          for (let i = 0; i < response.length; i++) {
+            response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
+            response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
+            response[i]['cashierLogin'] = response[i]['login']
+          }
+
+          POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
+            window.electron.dbApi.updateChequesListStatus(response2.transactionList).then(() => {
+              GET("/services/desktop/api/shift-xreport/" + shiftId).then(xReportResponse => {
+                setData(xReportResponse)
+                if (!reduxSettings?.printerBroken) {
+                  var domInString = printChequeRef.current.outerHTML
+                  window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
+                }
+
+                POST("/services/desktop/api/close-shift", sendData, true).then(() => {
+                  clearTemporaryStorage()
+                  dispatch({ type: 'USER_LOGGED_OUT', payload: null })
+                  history.push("/auth/login")
+                });
+              })
+            })
+          }).catch(e => {
+            toast.error(t('synchronization_error'))
+          })
+        } else {
+          GET("/services/desktop/api/shift-xreport/" + shiftId).then(response => {
+            response.AppletVersion = responseOfd?.result?.AppletVersion
+            response.UnsentZReportsCount = responseOfd?.result?.UnsentZReportsCount
+            response.ErrorsCount = responseOfd?.result?.ErrorsCount
+            response.AwaitingToSendZReportsCount = responseOfd?.result?.AwaitingToSendZReportsCount
+            setData(response)
+            //if (!reduxSettings?.printerBroken) {
+            var domInString = printChequeRef.current.outerHTML
+            window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
+            //}
+
+            POST("/services/desktop/api/close-shift", sendData, true).then(() => {
+              clearTemporaryStorage()
+              dispatch({ type: 'USER_LOGGED_OUT', payload: null })
+              history.push("/auth/login")
+            }).catch(err => {
+              clearTemporaryStorage()
+              dispatch({ type: 'USER_LOGGED_OUT', payload: null })
+              history.push("/auth/login")
+            });
+          })
+        }
+      })
+    } else {
+      toast.error(t('no_internet_connection'))
+    }
+    // SYNC CHEQUES THEN CLOSE SHIFT
+
+    return;
+  }
+
+  function toggleInternetListener() {
+    var condition = navigator.onLine ? "online" : "offline";
+    if (condition === "online" && internetConnection !== 2) {
+      dispatch(SET_INTERNET(1))
+    }
+    if (condition === "offline" && internetConnection !== 2) {
+      dispatch(SET_INTERNET(0))
+    }
+  }
+
+  function toggleInternet(boolean) {
+    var condition = navigator.onLine ? "online" : "offline";
+    if (boolean === 1 && condition === "online")
+      dispatch(SET_INTERNET(1))
+    if (boolean === 1 && condition === "offline")
+      dispatch(SET_INTERNET(0))
+    if (boolean === 2)
+      dispatch(SET_INTERNET(2))
+  }
+
+  function getXReport() {
+    setReportType(true)
+    var shiftId = cashbox.id ? cashbox.id : shift.id
+    GET("/services/desktop/api/shift-xreport/" + shiftId).then(response => {
+      setData(response)
+      if (reduxSettings?.xReport) {
+        setShowXReportModal(true)
+      } else {
+        if (!reduxSettings?.printerBroken) {
+          var domInString = printChequeRef.current.outerHTML
+          window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter)
+        }
+      }
+    })
+  }
+
+  function openRemoteAccess(type) {
+    window.electron.appApi.openRemoteAccess(type)
+  }
+
+  /* ВЗАИМО РАСЧЕТ */
+  function getDebtorsShowModal() {
+    GET("/services/desktop/api/client-debt-list/" + cashbox.posId).then(response => {
+      for (let i = 0; i < response.length; i++) {
+        response.selected = false
+      }
+      setDebtors(response)
+      setOldDebtors(response)
+      setShowDebtorsModal(true)
+      setTimeout(() => {
+        contactSearchRef.current.select()
+      }, 100);
+    })
+  }
+
+  function closeDebtorsModal() {
+    setShowDebtorsModal(false)
+    setContactSearchInput("")
+    setTransactionsListCash({ ...transactionsListCash, "amountIn": "" })
+    setTransactionsListTerminal({ ...transactionsListTerminal, "amountIn": "" })
+    setDebtorNote("")
+  }
+
+  function closeKassaModal() {
+    setOpenCashModal(false)
+    setRecievedMoneyStatus(false);
+  }
+
+  function closeNotificationModal() {
+    setOpenNotifModal(false)
+  }
+
+
+  function searchDebtor(search) {
+    if (search.length === 0) {
+      setDebtors(oldDebtors)
+    } else {
+      setContactSearchInput(search)
+      var debtorsCopy = [...oldDebtors]
+      var arr = []
+      for (let i = 0; i < debtorsCopy.length; i++) {
+        if (debtorsCopy[i]['clientName'].toLowerCase().includes(search.toLowerCase())) {
+          arr.push(debtorsCopy[i])
+        }
+      }
+      setDebtors(arr)
+    }
+  }
+
+  function selectDebtorClient(clientId, currencyId) {
+    var debtorsCopy = [...debtors]
+    for (let i = 0; i < debtorsCopy.length; i++) {
+      if (debtorsCopy[i]['clientId'] === clientId && debtorsCopy[i]['currencyId'] === currencyId) {
+        debtorsCopy[i]['selected'] = true
+      } else {
+        debtorsCopy[i]['selected'] = false
+      }
+    }
+    setDebtors(debtorsCopy)
+  }
+
+  function createClientDebt() {
+    var debtorsCopy = [...debtors]
+    var sendData = {
+      "amountIn": 0,
+      "amountOut": 0,
+      "cashboxId": cashbox.cashboxId,
+      "clientId": 0,
+      "currencyId": 0,
+      "posId": cashbox.posId,
+      "shiftId": cashbox.id ? cashbox.id : shift.id,
+      "transactionsList": []
+    }
+
+    for (let i = 0; i < debtorsCopy.length; i++) {
+      if (debtorsCopy[i]['selected']) {
+        sendData.clientId = debtorsCopy[i]['clientId']
+        sendData.clientName = debtorsCopy[i]['clientName']
+        sendData.balance = debtorsCopy[i]['balance']
+        sendData.currencyId = debtorsCopy[i]['currencyId']
+        sendData.currencyName = debtorsCopy[i]['currencyName']
+        sendData.note = debtorNote
+      }
+    }
+
+    if (sendData.clientId === 0) {
+      toast.error(t('debtor_not_selected'))
+      return;
+    }
+
+    if (transactionsListCash.amountIn || transactionsListTerminal.amountIn) {
+      transactionsListCash.paymentPurposeId = 5
+      sendData.amountIn += Number(transactionsListCash.amountIn)
+      if (Number(transactionsListCash.amountIn) > 0 || Number(transactionsListCash.amountOut) > 0) {
+        sendData.transactionsList.push(transactionsListCash)
+      }
+    }
+
+    if (transactionsListTerminal.amountIn || transactionsListTerminal.amountIn) {
+      transactionsListTerminal.paymentPurposeId = 5
+      sendData.amountIn += Number(transactionsListTerminal.amountIn)
+      if (Number(transactionsListTerminal.amountIn) > 0 || Number(transactionsListTerminal.amountOut) > 0) {
+        sendData.transactionsList.push(transactionsListTerminal)
+      }
+    }
+
+    setDebtorChequeData({
+      'date': todayDate(),
+      'name': sendData.clientName,
+      'payed': sendData.amountIn,
+      'currencyName': sendData.currencyName,
+      'balance': sendData.balance + sendData.amountIn
+    })
+
+    POST("/services/desktop/api/client-debt-in", sendData).then(() => {
+      setTransactionsListCash({ ...transactionsListCash, 'amountIn': "" })
+      setTransactionsListTerminal({ ...transactionsListTerminal, 'amountIn': "" })
+      setDebtorNote('')
+
+      if (!reduxSettings?.printerBroken) {
+        var domInString = printDebtorChequeRef.current.outerHTML;
+        window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter);
+        setTimeout(() => {
+          window.electron.appApi.print(domInString, reduxSettings?.receiptPrinter);
+        }, 500);
+      }
+
+      toast.success(t('success'))
+
+      GET("/services/desktop/api/client-debt-list/" + cashbox.posId).then(response => {
+        for (let i = 0; i < response.length; i++) {
+          response.selected = false
+        }
+        setDebtors(response)
+        setOldDebtors(response)
+      })
+    })
+  }
+  /* ВЗАИМО РАСЧЕТ */
+
+  /* РАСХОДЫ */
+  function createClient() {
+    POST("/services/desktop/api/clients", client).then(() => {
+      setClient({ "name": "", "phone1": "", "phone2": "", "comment": "" })
+      setShowAddClientModal(false)
+    })
+  }
+
+  function closeExpensesModal() {
+    setShowExpensesModal(false)
+    setDebtorOut({ ...debtorOut, "amountOut": "" })
+  }
+
+  function createDebtorOut(e) {
+    e.preventDefault();
+    POST("/services/desktop/api/expense-out", debtorOut).then(() => {
+      setDebtorOut({ ...debtorOut, "expenseId": "", "amountOut": "", "note": "" })
+      setShowExpensesModal(false)
+    });
+  }
+
+  function createCashMoney(e) {
+    e.preventDefault();
+    console.log(CashAmount);
+    localStorage.setItem('cashAmount', CashAmount);
+    setRecievedMoneyStatus(false);
+    setOpenCashModal(false)
+  }
+
+
+  function toggleExpenseModal(bool = false) {
+    if (bool) {
+      GET("/services/desktop/api/expense-helper").then(response => {
+        setExpenses(response)
+        var expenseId = 0
+        if (response.length > 0) expenseId = response[0]['id']
+        setDebtorOut({ ...debtorOut, "expenseId": expenseId, "amountOut": "", "note": "" })
+        setShowExpensesModal(true)
+      });
+    } else {
+      setShowExpensesModal(false)
+    }
+  }
+  /* РАСХОДЫ */
+
+  function setLockScreen() {
+    dispatch(SET_LOCK_SCREEN())
+  }
+
+  function syncCheques() {
+    if (window.navigator.onLine && internetConnection) {
+      window.electron.dbApi.getUnsyncCheques().then(response => {
+
+        if (response.length > 0) {
+          for (let i = 0; i < response.length; i++) {
+            response[i]['itemsList'] = JSON.parse(response[i]['itemsList'])
+            response[i]['transactionsList'] = JSON.parse(response[i]['transactionsList'])
+            response[i]['cashierLogin'] = response[i]['login']
+          }
+
+          POST("/services/desktop/api/cheque-create-list", response, false, false).then(response2 => {
+            window.electron.dbApi.updateChequesListStatus(response2.transactionList).then(() => {
+              window.electron.dbApi.getUnsyncCheques().then(response4 => {
+                dispatch(SET_UNSYNC_PRODUCTS(response4.length))
+                toast.success(t('synchronized'))
+
+                GET("/services/desktop/api/get-balance-product-list/" + cashbox.posId + "/" + cashbox.defaultCurrency).then(response => {
+                  window.electron.dbApi.deleteProducts()
+                  window.electron.dbApi.insertProducts(response).catch(e => { toast.error(e) })
+                  dispatch(SET_PRODUCTS_FROM_DB(Math.floor(Math.random() * 999999)))
+                  setTimeout(() => {
+                    toast.info(t('all_products_synchronized'))
+                  }, 1000);
+                })
+              })
+            })
+          }).catch(e => {
+            toast.error(t('synchronization_error'))
+          })
+        } else {
+          GET("/services/desktop/api/get-balance-product-list/" + cashbox.posId + "/" + cashbox.defaultCurrency).then(response => {
+            window.electron.dbApi.deleteProducts()
+            window.electron.dbApi.insertProducts(response).catch(e => { toast.error(e) })
+            dispatch(SET_PRODUCTS_FROM_DB(Math.floor(Math.random() * 999999)))
+            toast.info(t('all_products_synchronized'))
+          })
+        }
+      })
+    } else {
+      toast.error(t('no_internet_connection'))
+    }
+  }
+
+  useEffect(() => {
+    window.addEventListener('online', toggleInternetListener)
+    window.addEventListener('offline', toggleInternetListener)
+
+    return () => {
+      window.removeEventListener('online', toggleInternetListener)
+      window.removeEventListener('offline', toggleInternetListener)
+    }
+  }, []);// eslint-disable-line react-hooks/exhaustive-deps
+
+  const [notifications, setNotifications] = useState([]);
+
+  //   const handleToggle = (title) => {
+  //     setNotifications((prevNotifications) =>
+  //         prevNotifications.map((item) => ({
+  //             ...item,
+  //             show: item.title === title ? !item.show : false // Faqat bosilgan title ochiladi
+  //         }))
+  //     );
+  // };
+
+
+  const getImportanceStyle = (priority) => {
+    if (priority >= 1 && priority <= 2) {
+      return { backgroundColor: "#FFB9C9", color: "black" }; // Och qizil (Critical)
+    } else if (priority >= 3 && priority <= 4) {
+      return { backgroundColor: "#FFD8A8", color: "black" }; // Och to'q sariq (High)
+    } else if (priority >= 5 && priority <= 6) {
+      return { backgroundColor: "#FFEE99", color: "black" }; // Och sariq (Medium)
+    } else if (priority >= 7 && priority <= 8) {
+      return { backgroundColor: "#B9F6CA", color: "black" }; // Och yashil (Low)
+    } else if (priority >= 9 && priority <= 10) {
+      return { backgroundColor: "#B3E5FC", color: "black" }; // Och moviy (Very Low)
+    } else {
+      return { backgroundColor: "#F0F0F0", color: "black" }; // Default (engil kulrang)
+    }
+  };
+
+
+
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [readNotifications, setReadNotifications] = useState([]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRotation(20);
+      setTimeout(() => setRotation(-20), 100);
+      setTimeout(() => setRotation(0), 200);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    //APIGA SO'ROV YUBORISH UCHUN HAR BELGILANGAN VAQT ORALIGIDA BORADI KELGAN OZGARISHNI LOCALGA SAQLAYDI 
+    // AGAR LOCALDAGILAR BILAN APIDAN KELGAN LENGTH BIRXIL BOLMASA NOTIFICATION SOUND CHAQIRILADI 👇
+    // notificationSound.play();
+    let Notifies = JSON.parse(localStorage.getItem('notifications')) || []
+    let readNotif = JSON.parse(localStorage.getItem('readNotifications'))
+    if (readNotif) {
+      setReadNotifications(readNotif)
+    } else {
+      localStorage.setItem('readNotifications', JSON.stringify([]));
+    }
+    GET("/services/desktop/api/notifications/").then(response => {
+      if (response?.length > Notifies?.length) {
+        notificationSound.play();
+      }
+      console.log(response);
+      setNotifications(response);
+      localStorage.setItem('notifications', JSON.stringify(response));
+    })
+  }, [])
+
+
+
+
+
+
+  const handleNotificationClick = (priority) => {
+    let readNotif = JSON.parse(localStorage.getItem('readNotifications')) || []
+    if (readNotif) {
+      if (!readNotif.includes(priority)) {
+        localStorage.setItem('readNotifications', JSON.stringify([...readNotif, priority]));
+        setReadNotifications([...readNotifications, priority]);
+      }
+    }
+  };
+
+
+  const [expDate, setExpDate] = useState('')
+
+  useEffect(() => {
+    GET("/services/desktop/api/exp-date/").then(response => {
+      const paidUntil = response;
+      const endDate = paidUntil ? new Date(paidUntil.split(".").reverse().join("-")) : null;
+      let daysUntilPaid = null;
+      if (endDate && !isNaN(endDate.getTime())) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Bugunning vaqt qismini nolga o‘rnatamiz
+        endDate.setHours(0, 0, 0, 0); // End Date vaqt qismini nolga o‘rnatamiz
+
+        const differenceInMilliseconds = endDate.getTime() - now.getTime();
+        daysUntilPaid = Math.floor(differenceInMilliseconds / (1000 * 60 * 60 * 24));
+        setExpDate(daysUntilPaid)
+      }
+    })
+  }, [])
+
+  return (
+    <div id="drag-region" className="titlebar  d-flex justify-content-between">
+      <div className="h-100 ms-2 w-100">
+        <div className="d-flex h-100 ">
           <div className="me-2 h-100 vertical-center">
             {reduxSettings?.darkTheme ? (
               <img
@@ -679,6 +705,30 @@ function Titlebar() {
           )}
         </div>
       </div>
+      {(expDate > 0 && expDate < 8) &&
+        <><style jsx>{`
+          .fading-text {
+            animation: fade 2s infinite;
+          }
+
+          @keyframes fade {
+            0% { opacity: .50; }
+            50% { opacity: 1; }
+            100% { opacity: .50; }
+          }
+      `}</style>
+
+          <marquee className='' behavior="" direction="" scrollamount="10">
+            <p className="fs-5 ">
+              
+              {t('payment_date')} <span className='fading-text' style={{ color: expDate < 4 ? 'red' : "#0084ff" }}>{expDate} {t('days_away')}</span> 
+            </p>
+          </marquee>
+        </>
+      }
+
+      
+
       <div id="no-drag-region" className="d-flex">
         {Object.keys(cashbox).length !== 0 && (
           <div className="vertical-center h-100">
@@ -697,7 +747,7 @@ function Titlebar() {
                       transition: "transform 0.1s ease-in-out",
                     }}
                   />
-                  <span className="position-absolute bottom-0 start-100 translate-middle badge rounded-pill bg-danger w-75 h-75 d-flex align-items-center justify-content-center">
+                  <span style={{ opacity: `${(notifications.length - readNotifications.length) === 0 ? '0' : '100'}` }} className="position-absolute bottom-0 start-100 translate-middle badge rounded-pill bg-danger w-75 h-75 d-flex align-items-center justify-content-center">
                     {notifications.length - readNotifications.length}
                     <span className="visually-hidden">unread messages</span>
                   </span>
@@ -712,8 +762,8 @@ function Titlebar() {
                       className="modal-contents"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="modal-headers">
-                        <h4>Bildirishnomalar</h4>
+                      <div className="modal-headers p-4">
+                        <h4>{t('notifications')}</h4>
                         <Close
                           onClick={() => setIsModalOpen(false)}
                           style={{ cursor: "pointer" }}
@@ -722,21 +772,17 @@ function Titlebar() {
                       <div className="modal-body">
                         {notifications.map((notif) => (
                           <div
-                            key={notif.id}
-                            className={`notification-item ${
-                              notif.importance === "high"
-                                ? "important"
-                                : "normal"
-                            } ${
-                              readNotifications.includes(notif.id)
+                            key={notif.priority}
+                            style={getImportanceStyle(notif.priority)}
+                            className={`notification-item
+                             ${readNotifications.includes(notif.priority)
                                 ? "read"
                                 : "unread"
-                            }`}
-                            onClick={() => handleNotificationClick(notif.id)}
+                              }`}
+                            onClick={() => handleNotificationClick(notif.priority)}
                           >
                             <h5>{notif.title}</h5>
-                            <p>{notif.subtitle}</p>
-                            <small>{notif.details}</small>
+                            <p>{notif.body}</p>
                           </div>
                         ))}
                       </div>
@@ -759,7 +805,7 @@ function Titlebar() {
                     }
                     .modal-contents {
                       background: white;
-                      padding: 10px;
+                      padding: 5px;
                       border-radius: 10px;
                       width: 500px;
                       max-height: 400px;
@@ -798,6 +844,8 @@ function Titlebar() {
                   `}
                 </style>
               </div>
+
+
               {internetConnection === 0 && (
                 <div
                   className="titlebar-icon-wifi me-3"
@@ -1305,7 +1353,7 @@ function Titlebar() {
       {/* CASH REGISTER MONEY MODAL */}
 
       {/* NOTIFICAION MODAL */}
-      <Modal
+      {/* <Modal
         show={OpenNotifModal}
         animation={false}
         centered
@@ -1332,28 +1380,28 @@ function Titlebar() {
                     data-bs-target={`#collapse${item.id}`}
                     aria-expanded={item.show}
                     aria-controls={`collapse${item.id}`}
-                    onClick={() => handleToggle(item.id)}
+                    // onClick={() => handleToggle(item.id)}
                   >
                     <strong className="custom-text">{item.title}</strong>
                   </button>
                 </h2>
                 <div
-                  id={`collapse${item.id}`}
+                  id={`collapse${item.priority}`}
                   className={`accordion-collapse collapse ${
                     item.show ? "show" : ""
                   }`}
-                  aria-labelledby={`heading${item.id}`}
+                  aria-labelledby={`heading${item.priority}`}
                   data-bs-parent="#accordionExample"
                 >
                   <div className="accordion-body custom-body">
-                    {item.details}
+                    {item.body}
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </Modal.Body>
-      </Modal>
+      </Modal> */}
       {/* NOTIFICAION MODAL */}
 
       {/* EXPENSES MODAL */}
@@ -1694,7 +1742,7 @@ function Titlebar() {
             <p>{t("cashbox_balance")}</p>
             <p>{data.cashboxTotalAmount}</p>
           </div>
-		  {
+          {
             reduxSettings?.CashRegMoney && <>
               <div className="d-flex justify-content-between px-2">
                 <p>{'Kassadagi qaytim'}</p>

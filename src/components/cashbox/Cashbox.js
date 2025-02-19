@@ -110,7 +110,7 @@ function Cashbox() {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <>
+    <div>
       <div className="cashbox-tabs d-flex">
         <ul className="p-0 m-0">
           {tabs.map((item, index) => (
@@ -168,7 +168,7 @@ function Cashbox() {
         </Modal.Body>
       </Modal>
       {/* CONFIRM DELETE ONE PRODUCT MODAL */}
-    </>
+    </div>
   );
 }
 

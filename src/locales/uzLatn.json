@@ -356,5 +356,13 @@
   "exp_date": "Qaytarish kuni",
   "fiscal_module": "Fiskal modul",
   "fiscal_sign_number": "№ Fiskal belgi",
-  "thanks_letter": "Xaridingiz uchun tashakkur!"
+  "thanks_letter": "Xaridingiz uchun tashakkur!",
+  "dear_user": "Hurmatli foydalanuvchi",
+  "subscription_fee": "sizning abonent to'lovingiz tugashiga",
+  "days_away": "kun qoldi",
+  "on_time": "iltimos to'lovlarni o'z vaqtida amalga oshiring!",
+  "payment_date": " To'lov sanasigacha",
+  "store": "Do'kon",
+  "notifications": "Bildirishnomalar"
+
 }

@@ -1,5 +1,5 @@
 #drag-region {
-	z-index: 2000;
+	z-index: 900;
 	width: 100%;
 	-webkit-app-region: drag;
 }
