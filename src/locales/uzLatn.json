@@ -363,6 +363,10 @@
   "on_time": "iltimos to'lovlarni o'z vaqtida amalga oshiring!",
   "payment_date": " To'lov sanasigacha",
   "store": "Do'kon",
-  "notifications": "Bildirishnomalar"
+  "notifications": "Bildirishnomalar",
+  "add_refund": "Kassaga qaytim qo'shish",
+  "take_money": "Kassadan pul olish",
+  "taked_money": "Olingan pul",
+  "no_money": "Kassada pul yetarli emas."
 
 }

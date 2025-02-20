@@ -34,7 +34,6 @@ import { CLICK_POST } from 'api/apiClick';
 import { PAYME_POST } from 'api/apiPayme';
 import Uget from './loyalty/Uget';
 import Tirox from './loyalty/Tirox';
-import { get } from 'store';
 
 function Tab({ tabId, activeTabId }) {
   const { t } = useTranslation();
@@ -246,7 +245,6 @@ function Tab({ tabId, activeTabId }) {
         response.row.active_price = activePrice.active
         response.row.discountAmount = 0
         response.row.outType = false
-        response.row.quantity = weight
 
         response.row.modificationList = JSON.parse(response?.row?.modificationList)
         response.row.unitList = JSON.parse(response?.row?.unitList)
@@ -264,6 +262,9 @@ function Tab({ tabId, activeTabId }) {
               response.row.modificationList[i]['selected'] = false
             }
             response.row.selectedUnit = {}
+            response.row.quantity = weight + (response.row.quantity || 0)
+
+            console.log(response.row);
             setProductWithParams(response.row)
             setShowProductWithParamsModal({ ...showProductWithParamsModal, 'unitParamsModal': true, 'unitProductModal': false, 'unitListModal': false })
             return;
@@ -284,6 +285,7 @@ function Tab({ tabId, activeTabId }) {
             for (let i = 0; i < response.row.unitList.length; i++) {
               response.row.unitList[i]['selected'] = false
             }
+
             setProductWithParams(response.row)
             setShowProductWithParamsModal({ ...showProductWithParamsModal, 'unitParamsModal': false, 'unitProductModal': false, 'unitListModal': true })
           }
@@ -340,6 +342,9 @@ function Tab({ tabId, activeTabId }) {
       }
     })
   }
+
+
+
 
   function addToList(response, weight = 0) {
     var dataCopy = { ...data }
@@ -513,7 +518,7 @@ function Tab({ tabId, activeTabId }) {
           // PROMOTION LOGIC
         }
       } else {
-        dataCopy.itemsList[index]['quantity'] = response.quantity
+        dataCopy.itemsList[index]['quantity'] += response.quantity
       }
 
       dataCopy['totalVatAmount'] = 0
@@ -555,13 +560,13 @@ function Tab({ tabId, activeTabId }) {
     }
 
     setSearchInput("")
-    if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings?.selectBottomSearch) {
+    if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings.selectBottomSearch) {
       bottomProductSearchRef.current.focus()
       // Без этого не будет работать setState когда поиск не пустой
       window.electron.dbApi.getProducts().then(response => {
         setProducts([...products])
       })
-    } else if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings?.leaveBottomSearchText) {
+    } else if (document.getElementById('productSearchByName')?.value !== "" && reduxSettings.leaveBottomSearchText) {
       searchRef.current.focus()
     } else {
       searchRef.current.focus()
@@ -601,6 +606,8 @@ function Tab({ tabId, activeTabId }) {
     }
 
     calculateTotalPrice(dataCopy)
+    console.log(response);
+
   }
 
   function addToListUnit() {
@@ -926,6 +933,7 @@ function Tab({ tabId, activeTabId }) {
   }
 
   function selectProductWithParamsModification(index) {
+
     var productWithParamsCopy = { ...productWithParams }
     if (productWithParamsCopy.modificationList[index]['serial'])
       productWithParamsCopy.serial = productWithParamsCopy.modificationList[index]['serial']
@@ -942,6 +950,8 @@ function Tab({ tabId, activeTabId }) {
       setShowProductWithParamsModal({ ...showProductWithParamsModal, 'unitParamsModal': false, 'unitListModal': true, 'unitProductModal': false })
     } else {
       setShowProductWithParamsModal({ ...showProductWithParamsModal, 'unitParamsModal': false, 'unitListModal': false, 'unitProductModal': false })
+      console.log(productWithParamsCopy.quantity);
+
       addToList(productWithParamsCopy)
     }
   }
@@ -1206,7 +1216,7 @@ function Tab({ tabId, activeTabId }) {
   function handlePaymentModal(boolean, activeTab = 1) {
     if (data.itemsList.length > 0) {
       if (boolean) {
-		console.log(''); // without this line next not work
+        // console.log(''); // without this line next not work
         setTransactionsListCash({ ...transactionsListCash, amountIn: Number(data.totalPrice), paymentPurposeId: 1, paymentTypeId: 1 })
         setTransactionsListTerminal({ ...transactionsListTerminal, amountIn: 0, paymentPurposeId: 1, paymentTypeId: 2 })
         setData({ ...data, chequeOfdType: 0 })
@@ -1361,7 +1371,7 @@ function Tab({ tabId, activeTabId }) {
   const [UtilPaidModal, setUtilPaidModal] = useState('')
 
   useEffect(() => {
-    GET("/services/desktop/api/exp-date?posId="+ cashbox.posId).then(response => {
+    GET(`/services/desktop/api/exp-date/`, { posId: cashbox?.posId }).then(response => {
       const paidUntil = response;
       const endDate = paidUntil ? new Date(paidUntil.split(".").reverse().join("-")) : null;
       let daysUntilPaid = null;
@@ -1949,6 +1959,8 @@ function Tab({ tabId, activeTabId }) {
         dataCopy.pinPad7 = pinPadResult[7]
       }
     }
+
+
 
     setData(dataCopy)
     await delay(200)
@@ -3362,6 +3374,8 @@ function Tab({ tabId, activeTabId }) {
 
   return (
     <>
+
+
       <div className="d-flex">
         <div className="w-97 relatvive">
           <span className="absolute caret-left-icon cursor" onClick={() => showRightBar(rightBar ? false : true)}>

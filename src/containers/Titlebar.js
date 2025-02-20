@@ -23,7 +23,7 @@ import { toast } from 'react-toastify';
 import { clearTemporaryStorage, getUnixTime, formatDateWithTime, formatMoney, todayDate, todayYYYYMMDD, formatMoneyInput } from 'helpers/helpers'
 import '../assets/css/titlebar.css'
 import logo from '../assets/images/logo.svg'
-import logo_white from '../assets/images/logo_white.svg'
+import logo_dark from '../assets/images/logo_dark.png'
 import money from 'assets/icons/money.svg'
 import creditCard from 'assets/icons/credit-card.svg'
 import { O_POST } from 'api/apiOfd';
@@ -62,18 +62,20 @@ function Titlebar() {
   const [OpenCashModal, setOpenCashModal] = useState(false);
   const [OpenNotifModal, setOpenNotifModal] = useState(false);
   const [CashAmount, setCashAmount] = useState(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '');
+  const [CashAmount2, setCashAmount2] = useState(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '');
   const [RecievedMoney, setRecievedMoney] = useState('');
   const [RecievedMoneyStatus, setRecievedMoneyStatus] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [showConfirmShiftCloseModal, setShowConfirmShiftCloseModal] = useState(false);
 
   const [contactSearchInput, setContactSearchInput] = useState("");
+  const [Comment, setComment] = useState("");
 
   const [debtorNote, setDebtorNote] = useState("");
   const [transactionsListCash, setTransactionsListCash] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 1, "paymentPurposeId": 1 });
   const [transactionsListTerminal, setTransactionsListTerminal] = useState({ "amountIn": "", "amountOut": "", "paymentTypeId": 2, "paymentPurposeId": 1 });
   const [rotation, setRotation] = useState(0);
-  const notificationSound = new Audio('/notif.mp3'); // Ovoz faylini chaqirish
+  // const notificationSound = new Audio('./notif.mp3'); // Ovoz faylini chaqirish
 
   function windowMinimize() {
     window.electron.appApi.windowMinimize()
@@ -331,6 +333,7 @@ function Titlebar() {
   }
 
   function closeKassaModal() {
+
     setOpenCashModal(false)
     setRecievedMoneyStatus(false);
   }
@@ -470,10 +473,30 @@ function Titlebar() {
 
   function createCashMoney(e) {
     e.preventDefault();
-    console.log(CashAmount);
-    localStorage.setItem('cashAmount', CashAmount);
-    setRecievedMoneyStatus(false);
-    setOpenCashModal(false)
+    if (parseFloat(CashAmount.replace(/[^0-9.]/g, "")) == 0) return;
+    POST('/services/desktop/api/cashbox-refund-balance/',
+      {
+        pos_id: cashbox.posId,
+        amount: parseFloat(CashAmount.replace(/[^0-9.]/g, "")), //qancha summa qolganini kiritish
+        expense: RecievedMoney, //kassadan qancha pul olingani, kiritmasa 0 kelsin
+        comment: Comment //izoh,
+      }
+    ).then((response) => {
+      console.log(response);
+      console.log(CashAmount);
+      localStorage.setItem('cashAmount', CashAmount);
+      setRecievedMoney(0)
+      setCashAmount2(CashAmount)
+      setRecievedMoneyStatus(false);
+      setOpenCashModal(false)
+      setComment('')
+      toast.success(t('success'))
+    }).catch((error) => {
+      toast.error(t('error'))
+    })
+
+
+
   }
 
 
@@ -606,11 +629,44 @@ function Titlebar() {
       localStorage.setItem('readNotifications', JSON.stringify([]));
     }
     GET("/services/desktop/api/notifications/").then(response => {
-      if (response?.length > Notifies?.length) {
-        notificationSound.play();
-      }
-      console.log(response);
-      setNotifications(response);
+      // if (response?.length > Notifies?.length) {
+      //   notificationSound.play();
+      // }
+
+      const processHtmlContentByLanguage = (htmlContent) => {
+        try {
+          // Parse the JSON message
+          const parsedContent = JSON.parse(htmlContent);
+
+          // Create a temporary div element for each language
+          const processText = (html) => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            return tempDiv.textContent || tempDiv.innerText || '';
+          };
+
+          // Extract plain text for each language
+          return {
+            ru: processText(parsedContent.ru || ''),
+            lat: processText(parsedContent.lat || ''),
+            cyr: processText(parsedContent.cyr || '')
+          };
+        } catch (error) {
+          console.error('Error parsing or processing content:', error);
+          return { ru: 'Invalid content', lat: 'Invalid content', cyr: 'Invalid content' };
+        }
+      };
+
+      // Process each notification
+      const processedTexts = response.map((item) => ({
+        id: item.id,
+        createdAt: item.createdAt,
+        priority: item.priority,
+        ...processHtmlContentByLanguage(item.message)
+      }));
+
+      console.log(processedTexts);
+      setNotifications(processedTexts);
       localStorage.setItem('notifications', JSON.stringify(response));
     })
   }, [])
@@ -634,7 +690,8 @@ function Titlebar() {
   const [expDate, setExpDate] = useState('')
 
   useEffect(() => {
-    GET("/services/desktop/api/exp-date/").then(response => {
+    console.log(cashbox);
+    GET(`/services/desktop/api/exp-date/`, { posId: cashbox?.posId }).then(response => {
       const paidUntil = response;
       const endDate = paidUntil ? new Date(paidUntil.split(".").reverse().join("-")) : null;
       let daysUntilPaid = null;
@@ -650,6 +707,54 @@ function Titlebar() {
     })
   }, [])
 
+  let locale = "ru"
+  if (localStorage.getItem("I18N_LANGUAGE") === 'ru') locale = "ru"
+  else if (localStorage.getItem("I18N_LANGUAGE") === 'uz-Latn-UZ') { locale = "lat" }
+  else if (localStorage.getItem("I18N_LANGUAGE") === 'uz-Cyrl-UZ') { locale = "cyr" }
+
+  useEffect(() => {
+    // GET('/services/desktop/api/cashbox-refund-balance/').then(response => {
+    //   console.log(response);
+    // })
+  }, [])
+
+
+  const TakeMoney = (value) => {
+
+    const cleanedValue = value.replace(/[^0-9.]/g, "") || 0;
+
+    // CashAmount va RecievedMoney ni raqamga aylantirish
+    const cashAmountNumber = parseFloat(CashAmount2.replace(/[^0-9.]/g, ""));
+    const receivedMoneyNumber = parseFloat(cleanedValue);
+
+    console.log(cashAmountNumber, receivedMoneyNumber);
+    // CashAmount dan ayirish
+    const newCashAmount = cashAmountNumber - receivedMoneyNumber;
+
+    // Agar natija manfiy bo'lsa, 0 qilib qo'yish
+    if (newCashAmount < 0) {
+      toast.error(t('no_money'))
+      setRecievedMoney('0'.replace(/[^0-9.]/g, ""));
+      setCashAmount(CashAmount2)
+    } else {
+      setCashAmount(formatMoneyInput(newCashAmount.toString()));
+      setRecievedMoney(receivedMoneyNumber)
+    }
+
+  };
+
+  function PutCashMoney(value) {
+    setCashAmount(value.replace(/[^0-9.]/g, ""))
+    setCashAmount2(value.replace(/[^0-9.]/g, ""))
+  }
+
+  function OpenKassaModal() {
+    setCashAmount(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '')
+    setCashAmount2(localStorage.getItem('cashAmount') ? localStorage.getItem('cashAmount') : '')
+    setRecievedMoney('')
+    setOpenCashModal(true)
+  }
+
   return (
     <div id="drag-region" className="titlebar  d-flex justify-content-between">
       <div className="h-100 ms-2 w-100">
@@ -657,7 +762,7 @@ function Titlebar() {
           <div className="me-2 h-100 vertical-center">
             {reduxSettings?.darkTheme ? (
               <img
-                src={logo_white}
+                src={logo_dark}
                 alt="logo"
                 width={globalValue("projectLogoWidth")}
               />
@@ -720,14 +825,12 @@ function Titlebar() {
 
           <marquee className='' behavior="" direction="" scrollamount="10">
             <p className="fs-5 ">
-              
-              {t('payment_date')} <span className='fading-text' style={{ color: expDate < 4 ? 'red' : "#0084ff" }}>{expDate} {t('days_away')}</span> 
+
+              {t('payment_date')} <span className='fading-text' style={{ color: expDate < 4 ? 'red' : "#0084ff" }}>{expDate} {t('days_away')}</span>
             </p>
           </marquee>
         </>
       }
-
-      
 
       <div id="no-drag-region" className="d-flex">
         {Object.keys(cashbox).length !== 0 && (
@@ -770,21 +873,23 @@ function Titlebar() {
                         />
                       </div>
                       <div className="modal-body">
-                        {notifications.map((notif) => (
-                          <div
-                            key={notif.priority}
-                            style={getImportanceStyle(notif.priority)}
-                            className={`notification-item
-                             ${readNotifications.includes(notif.priority)
-                                ? "read"
-                                : "unread"
-                              }`}
-                            onClick={() => handleNotificationClick(notif.priority)}
-                          >
-                            <h5>{notif.title}</h5>
-                            <p>{notif.body}</p>
-                          </div>
-                        ))}
+                        {notifications.map((notif) => {
+                          return (
+                            <div
+                              key={notif.priority}
+                              style={getImportanceStyle(notif.priority)}
+                              className={`notification-item
+                              ${readNotifications.includes(notif.id)
+                                  ? "read"
+                                  : "unread"
+                                }`}
+                              onClick={() => handleNotificationClick(notif.id)}
+                            >
+                              <p>{notif[locale]}</p>
+                            </div>
+                          )
+                        }
+                        )}
                       </div>
                     </div>
                   </div>
@@ -877,7 +982,7 @@ function Titlebar() {
                 <div
                   className="titlebar-icon me-3"
                   title="Kassadagi pul"
-                  onClick={() => setOpenCashModal(true)}
+                  onClick={() => OpenKassaModal()}
                 >
                   <Money />
                 </div>
@@ -1276,7 +1381,7 @@ function Titlebar() {
           </div>
           <form onSubmit={(e) => createCashMoney(e)} className="w-100">
             <div className="form-group position-relative">
-              <label className="color-a2">{"Kassaga qaytim qo'shish"}</label>
+              <label className="color-a2">{t('add_refund')}</label>
               <input
                 type="text"
                 placeholder={
@@ -1287,28 +1392,26 @@ function Titlebar() {
                 className="custom-input"
                 // value={debtorOut.amountOut ? formatMoneyInput(debtorOut.amountOut) : ''}
                 value={formatMoneyInput(CashAmount)}
-                onChange={(e) =>
-                  setCashAmount(e.target.value.replace(/[^0-9.]/g, ""))
-                }
+                onChange={(e) => PutCashMoney(e.target.value)}
               />
               <span className="input-inner-icon">
                 <img src={money} width={25} alt="money" />
               </span>
             </div>
             <div className="d-flex  my-3 justify-content-between w-100px ">
-              <label className="color-a2 ">{"Kassadan pul olish"}</label>
+              <label className="color-a2 ">{t('take_money')}</label>
               <input
                 type="checkbox"
                 className="ios-switch light"
-                checked={RecievedMoneyStatus}
-                onChange={(e) => setRecievedMoneyStatus(e.target.checked)}
+                checked={CashAmount.length > 0 ? RecievedMoneyStatus : false}
+                onChange={(e) => setRecievedMoneyStatus(CashAmount.length > 0 && e.target.checked)}
               />
             </div>
 
-            {RecievedMoneyStatus && (
+            {(RecievedMoneyStatus && CashAmount.length > 0) && (
               <>
                 <div className="form-group position-relative">
-                  <label className="color-a2">{"Olingan pul"}</label>
+                  <label className="color-a2">{t('taked_money')}</label>
                   <input
                     type="text"
                     placeholder={
@@ -1318,9 +1421,7 @@ function Titlebar() {
                     }
                     className="custom-input"
                     value={formatMoneyInput(RecievedMoney)}
-                    onChange={(e) =>
-                      setRecievedMoney(e.target.value.replace(/[^0-9.]/g, ""))
-                    }
+                    onInput={(e) => TakeMoney(e.target.value)}
                   />
                   <span className="input-inner-icon">
                     <img src={money} width={25} alt="money" />
@@ -1332,8 +1433,8 @@ function Titlebar() {
                     className="custom-input "
                     placeholder={t("note")}
                     rows={2}
-                    onChange={(e) =>
-                      setDebtorOut({ ...debtorOut, note: e.target.value })
+                    onInput={(e) =>
+                      setComment(e.target.value)
                     }
                   />
                 </div>

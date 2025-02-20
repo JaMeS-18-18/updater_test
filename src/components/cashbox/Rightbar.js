@@ -338,7 +338,7 @@ function Rightbar({
 									*
 								</div>
 							</div>
-							<div className="d-flex gap-1">
+							<div className="d-flex gap-1 color-00">
 								<div className="keyboard-button" onClick={() => handleShortcut({ key: 'F5' })}>
 									F5
 								</div>
