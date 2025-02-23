@@ -22,6 +22,7 @@ function Settings() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   //const [downloadStarted, setDownloadStarted] = useState(false);
   const [lottieConfig, setLottieConfig] = useState({ 'play': false });
+	const [showWarningModal, setShowWarningModal] = useState(false);
   const [downloadDetail, setDownloadDetail] = useState({
     message: t('checking_update_and_connection'),
     updateExist: null,
@@ -74,6 +75,7 @@ function Settings() {
     'printReturnCheque': false,
     'humoTerminal': false,
     'ofd': false,
+		'multikassaOfd': false,
     'ofdFactoryId': '',
     'showFastPayButtons': false,
     'organizationDebtButton': false,
@@ -86,6 +88,18 @@ function Settings() {
     'leaveBottomSearchText': false,
     'CashRegMoney': false,
   })
+
+  const handleMultikassaActivation = (e) => {
+    const isChecked = e.target.checked;
+
+    // Update the settings state
+    setSettings({ ...settings, multikassaOfd: isChecked });
+
+    // Show the warning modal
+    if (!isChecked) {
+        setShowWarningModal(true);
+    }
+};
 
   const checkUpdateExist = () => {
     var version = window.electron.ipcRenderer.sendSync('app-version')
@@ -745,7 +759,7 @@ function Settings() {
                 </div>
                 <div className="setting-block mb-3 d-non">
                   <div className="vertical-center">
-                    <h6 className="m-0 fw-500">2.3 {t('ofd')}</h6>
+										<h6 className="m-0 fw-500">4.1 {t('ofd')}</h6>
                     <span className="fz14 ms-3">FactoryID</span>
                   </div>
                   <div className="vertical-center w-250px">
@@ -753,6 +767,16 @@ function Settings() {
                       onChange={(e) => setSettings({ ...settings, 'ofdFactoryId': e.target.value })} />
                   </div>
                 </div>
+								<div className="d-flex justify-content-between mb-3 d-non">
+									<div className="vertical-center">
+										<h6 className="m-0 fw-500">{t('multikassaOfd')}</h6>
+										<span className="fz14 ms-3">{t('multikassaOfd_text')}</span>
+									</div>
+									<div className="vertical-center">
+										<input type="checkbox" className="ios-switch light" checked={settings.multikassaOfd}
+											onChange={handleMultikassaActivation} />
+									</div>
+								</div>
               </div>
             </div>
 
@@ -776,6 +800,19 @@ function Settings() {
           <button button="submit" className="btn btn-primary text-uppercase" onClick={saveSettings}>{t('save')}</button>
         </div>
       </div>
+
+			
+			{/* UPDATE MODAL */}
+			<Modal show={showWarningModal} animation={false} centered dialogClassName="update-modal-width" backdrop="static" onHide={() => setShowWarningModal(false)}>
+				<Modal.Body>
+						<h2>{t('multikassaOfd_warning_short')}</h2>
+						<br></br>
+                        <p dangerouslySetInnerHTML={{__html: t('multikassaOfd_warning_long'),}}></p>
+						<br></br>
+                        <button onClick={() => setShowWarningModal(false)}>{t('close')}</button>
+				</Modal.Body>
+			</Modal>
+			{/* UPDATE MODAL */}
 
       {/* UPDATE MODAL */}
       <Modal show={showUpdateModal} animation={false} centered dialogClassName="update-modal-width" backdrop="static" onHide={() => setShowUpdateModal(false)}>
