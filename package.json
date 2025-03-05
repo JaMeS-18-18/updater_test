@@ -1,12 +1,18 @@
 {
 	"name": "idokon_cashbox",
-	"version": "1.1.3",
+	"version": "1.1.2",
 	"private": true,
 	"author": "Idokon",
 	"email": "idokon@gmail.com",
 	"description": "idokon - POS",
 	"homepage": "./",
 	"main": "./public/electron.js",
+	"repository": "https://github.com/JaMeS-18-18/updater_test",
+	"publish": {
+    "provider": "github",
+    "owner": "JaMeS-18-18",
+    "repo": "updater_test"
+},
 	"build": {
 		"productName": "Idokon",
 		"appId": "com.idokon_cashbox.app",
@@ -16,16 +22,11 @@
 			"build/**/*"
 		],
 		"directories": {
-			"buildResources": "./public/**/*"
+			"buildResources": "./public/**/*",
+			"output": "dist"
 		},
 		"extraResources": [
 			"./extraResources/**"
-		],
-		"publish": [
-			{
-				"provider": "generic",
-				"url": "https://my.idokon.uz/download/"
-			}
 		],
 		"win": {
 			"artifactName": "${productName}${version}(${arch}).${ext}",
@@ -40,6 +41,7 @@
 			"allowToChangeInstallationDirectory": true
 		}
 	},
+  "license": "ISC",
 	"dependencies": {
 		"@electron/remote": "^1.2.0",
 		"@fortawesome/fontawesome-free": "^6.5.2",

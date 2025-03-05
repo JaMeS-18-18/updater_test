@@ -50,7 +50,7 @@ function createWindow() {
 		webPreferences: {
 			//webSecurity: isDev ? true : false,
 			webSecurity: false,
-			nodeIntegration: false,
+			nodeIntegration: true,
 			contextIsolation: true,
 			enableRemoteModule: false,
 			preload: path.join(__dirname, "/preload.js")
@@ -64,8 +64,8 @@ function createWindow() {
 		webPreferences: {
 			webSecurity: false,
 			nodeIntegration: true,
-			contextIsolation: false,
-			enableRemoteModule: true,
+			contextIsolation: true,
+			enableRemoteModule: false,
 		},
 	});
 	printerWindow.loadURL(`file:///${__dirname}/print/cheque.html`)
@@ -101,9 +101,20 @@ function createWindow() {
 
 	// Emitted when the window is closed.
 	mainWindow.on('closed', function () {
+		mainWindow = null;
+		printerWindow = null;
 		app.quit()
 	})
+	autoUpdater.checkForUpdates();
 }
+
+app.whenReady().then(() => {
+	createWindow();
+	setTimeout(() => {
+			autoUpdater.checkForUpdatesAndNotify();
+	}, 5000); // 5 soniya kutish bilan tekshirib ko‘ring
+});
+
 
 app.on('ready', createWindow);
 // Quit when all windows are closed.
@@ -180,10 +191,10 @@ ipcMain.on("check-update", () => {
 		autoUpdater.updateConfigPath = path.join(__dirname, '../dev-app-update.yml');
 		autoUpdater.checkForUpdatesAndNotify();
 	} else {
-		autoUpdater.setFeedURL({
-			"provider": "generic",
-			"url": "https://my.idokon.uz/download/"
-		})
+		// autoUpdater.setFeedURL({
+		// 	"provider": "generic",
+		// 	"url": "https://my.idokon.uz/download/"
+		// })
 		autoUpdater.checkForUpdatesAndNotify();
 	}
 });
@@ -293,7 +304,7 @@ ipcMain.on('cmd-delete-printer-job', (event, args) => {
 
 /* ELECTRON UPDATE */
 function sendStatusToWindow(downloadDetail) {
-	mainWindow.webContents.send("fromMain", downloadDetail);
+	mainWindow.webContents.send("message", downloadDetail);
 }
 
 autoUpdater.on('checking-for-update', () => {

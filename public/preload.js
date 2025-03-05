@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electron', {
 		if (validChannels.includes(channel)) {
 			// Deliberately strip event as it includes `sender` 
 			ipcRenderer.on(channel, (event, ...args) => func(...args));
+			
 		}
 		// if (channel === 'listenUsb') {
 		// 	// Deliberately strip event as it includes `sender` 
